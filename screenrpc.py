@@ -35,7 +35,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 
 
 class ScreenRpcServer(QThread):
-    def __init__(self, content_queue):
+    def __init__(self, content_queue, password):
         QThread.__init__(self)
         
         self.__content_queue = content_queue
@@ -45,6 +45,7 @@ class ScreenRpcServer(QThread):
 
         # make content_queue available inside request handlers
         self.__httpd.content_queue = self.__content_queue
+        self.__httpd.password = password
 
         self.__stopped = False
 
@@ -57,8 +58,8 @@ class ScreenRpcServer(QThread):
         self.__httpd.handle_request()
         QTimer.singleShot(100, self.request_check)
 
-def start_rpc_server(content_queue):
-    rpcserver = ScreenRpcServer(content_queue)
+def start_rpc_server(content_queue, rpc_password):
+    rpcserver = ScreenRpcServer(content_queue, rpc_password)
     QTimer.singleShot(100, rpcserver.request_check)
     return rpcserver
 

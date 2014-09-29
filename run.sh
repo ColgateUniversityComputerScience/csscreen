@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 screendisplay.py
+python3 screendisplay.py $*

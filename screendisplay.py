@@ -5,6 +5,7 @@ from time import asctime
 import signal
 import os
 from abc import ABCMeta,abstractmethod
+import argparse
 
 from screencontent import *
 from screenrpc import start_rpc_server
@@ -23,6 +24,16 @@ class Display(QWidget):
 
         self.__content_queue = content_queue
 
+        self.__nocontent = HTMLContent('''
+            <style>
+            body { font-family: Helvetica, sans-serif }
+            h1 { color: red; background-color: white; }
+            </style>
+            <h1>No content added!</h1>
+            <p>This screen would be way more interesting if content were added, right?</p>
+            ''', 'No content!', 'No content added to queue')
+
+
         self.time = QLabel()
         self.time.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.time.setText('starting...')
@@ -35,8 +46,9 @@ class Display(QWidget):
         self.webview.setHtml("<h1>Starting...</h1>")
 
         mainLayout = QVBoxLayout()
-        mainLayout.addWidget(self.time)
-        mainLayout.addWidget(self.webview)
+        mainLayout.addWidget(self.time, 1)
+        mainLayout.addSpacing(10)
+        mainLayout.addWidget(self.webview, 100)
 
         self.setLayout(mainLayout)
         self.setWindowTitle("csdisplay")
@@ -45,9 +57,7 @@ class Display(QWidget):
         self.clock.timeout.connect(self.clock_update)
         self.clock.start(1000)
 
-        self.contenttimer = QTimer()
-        self.contenttimer.timeout.connect(self.content_update)
-        self.contenttimer.start(12000)
+        QTimer.singleShot(1000, self.content_update)
 
     def stop(self):
         self.clock.stop()
@@ -69,12 +79,13 @@ class Display(QWidget):
         try:
             item = self.__content_queue.next_content()
         except NoSuitableContentException:
-            item = HTMLContent('''
-            <h1 style="text-color: red; background: white;">No content added!</h1>
-            <p>This screen would be way more interesting if content were added, right?</p>
-            ''', 'No content!', 'No content added to queue')
+            item = self.__nocontent
 
+        # as content item to render itself to the display
         item.renderSelf(self.webview)
+
+        # display_duration is in sec
+        QTimer.singleShot(item.display_duration*1000, self.content_update) 
 
 def sigint(*args):
     global running
@@ -85,17 +96,23 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     signal.signal(signal.SIGINT, sigint)
 
+    parser = argparse.ArgumentParser(description='CS screen display')
+    parser.add_argument('--password', '-p', default='password', help='Specify password used to authenticate requests for modifying and querying content on the display')
+    parser.add_argument('--fullscreen', default=False, action='store_true', help='Specify whether the display should go into full screen on startup')
+    args = parser.parse_args()
+
     content_queue = ContentQueue()
 
-    rpcserver = start_rpc_server(content_queue)
+    rpcserver = start_rpc_server(content_queue, args.password)
 
     screen = Display(content_queue)
 
     # block here until app dies
-    screen.show()
-    # screen.showMaximized()
-    # screen.showFullScreen()
+    if args.fullscreen:
+        screen.showMaximized()
+        # screen.showFullScreen()
+    else:
+        screen.show()
 
-    # cleanup
-    app.exec_()
+    app.exec_() # block here until we die
     rpcserver.stop()
