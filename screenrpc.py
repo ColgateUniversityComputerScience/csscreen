@@ -1,14 +1,14 @@
+import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import ssl
 import json
-from PyQt4.QtCore import QThread
+from PyQt4.QtCore import QTimer, QThread
+from time import sleep
 
 class MyRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        print (self.command, self.path)
-        print (self.client_address)
-        print (self.server.content_queue)
-
+        #print (self.command, self.path)
+        #print (self.client_address)
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         output = json.dumps({'status':'Success'})
@@ -17,9 +17,8 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(output.encode('utf-8'))
 
     def do_POST(self):
-        print (self.command, self.path)
-        print (self.client_address)
-        print (self.headers)
+        #print (self.command, self.path)
+        #print (self.client_address)
         xlen = int(self.headers['Content-Length'])
         indata = self.rfile.read(xlen).decode('utf-8')
         indata = json.loads(indata)
@@ -38,22 +37,28 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 class ScreenRpcServer(QThread):
     def __init__(self, content_queue):
         QThread.__init__(self)
-
+        
         self.__content_queue = content_queue
         self.__httpd = HTTPServer(('localhost', 4443), MyRequestHandler)
-        self.__httpd.socket = ssl.wrap_socket (self.__httpd.socket, certfile='server.pem', server_side=True)
+        self.__httpd.socket = ssl.wrap_socket(self.__httpd.socket, certfile='server.pem', server_side=True)
+        self.__httpd.timeout = 0.0
 
         # make content_queue available inside request handlers
         self.__httpd.content_queue = self.__content_queue
 
+        self.__stopped = False
+
     def stop(self):
-        self.__httpd.shutdown()
+        self.__stopped = True
 
-    def run(self):
-        print("In httpsd run")
-        self.__httpd.serve_forever()
+    def request_check(self):
+        if self.__stopped:
+            return
+        self.__httpd.handle_request()
+        QTimer.singleShot(100, self.request_check)
 
+def start_rpc_server(content_queue):
+    rpcserver = ScreenRpcServer(content_queue)
+    QTimer.singleShot(100, rpcserver.request_check)
+    return rpcserver
 
-if __name__ == '__main__':
-    r = ScreenRpcServer(None)  # no content queue
-    r.start()

@@ -5,10 +5,9 @@ from time import asctime
 import signal
 import os
 from abc import ABCMeta,abstractmethod
-from threading import Thread
 
 from screencontent import *
-from screenrpc import ScreenRpcServer
+from screenrpc import start_rpc_server
 
 assert(sys.version_info.major == 3)
 
@@ -88,8 +87,7 @@ if __name__ == '__main__':
 
     content_queue = ContentQueue()
 
-    server = ScreenRpcServer(content_queue) # side-effect: starts a new thread
-    server.start()
+    rpcserver = start_rpc_server(content_queue)
 
     screen = Display(content_queue)
 
@@ -99,7 +97,5 @@ if __name__ == '__main__':
     # screen.showFullScreen()
 
     # cleanup
-    server.stop()
-    server.wait()
-    sys.exit(app.exec_())
-
+    app.exec_()
+    rpcserver.stop()
