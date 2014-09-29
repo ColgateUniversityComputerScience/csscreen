@@ -61,10 +61,10 @@ class Display(QWidget):
 
     def stop(self):
         self.clock.stop()
-        self.contenttimer.stop()
         self.close()
 
     def clock_update(self):
+        global running
         if not running:
             self.stop()
             return
@@ -72,6 +72,7 @@ class Display(QWidget):
         self.time.setText(asctime())
 
     def content_update(self):
+        global running
         if not running:
             self.stop()
             return

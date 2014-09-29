@@ -7,16 +7,66 @@ from time import sleep
 
 class MyRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        #print (self.command, self.path)
-        #print (self.client_address)
+        # valid GET requests: 
+        #    /display
+        #    /display/{name}
+        
+        print ("GET received: {}".format(self.path))
+        response_data = {}
+
+        questionmark = self.path.find('?')
+        if questionmark == -1:
+            # failure: no required query parm
+            response_data['status'] = 'failure'
+            response_data['reason'] = 'required query parameter not specified'
+
+        path = self.path[:questionmark]
+        queryparms = self.path[(questionmark+1):].split('=')
+        if len(queryparms) != 2 or queryparms[0] != 'password':
+            # failure: not expected.  we just one one parameter (password)
+            response_data['status'] = 'failure'
+            response_data['reason'] = 'invalid number of query parameters'
+
+        elif queryparms[1] != self.server.password:
+            # failure: wrong password
+            response_data['status'] = 'failure'
+            response_data['reason'] = 'authentication failed'
+
+        elif path == '/display':
+            # list content
+            response_data = {
+                'status':'success',
+                'content':self.server.content_queue.list_content()
+            }
+        elif path.startswith('/display/'):
+            xname = path[9:] # slice off '/display/'
+            contentitem = self.server.content_queue.get_content(xname)
+            if contentitem:
+                response_data['status'] = 'success'
+                response_data['content'] = str(contentitem) # FIXME -- send back more detail?
+            else:
+                response_data['status'] = 'failure'
+                response_data['reason'] = "no content object named '{}'".format(xname)
+        else:
+            response_data['status'] = 'failure'
+            response_data['reason'] = 'invalid request path'
+
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
-        output = json.dumps({'status':'Success'})
+        output = json.dumps(response_data)
         self.send_header('Content-Length', len(output))
         self.end_headers()
         self.wfile.write(output.encode('utf-8'))
 
+    def do_DELETE(self):
+        # valid DELETE request:
+        #   /display/{name}
+        pass
+
     def do_POST(self):
+        # valid POST requests:
+        #   /display
+
         #print (self.command, self.path)
         #print (self.client_address)
         xlen = int(self.headers['Content-Length'])
