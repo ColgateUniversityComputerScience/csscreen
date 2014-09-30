@@ -25,13 +25,19 @@ class Display(QWidget):
         self.__content_queue = content_queue
 
         self.__nocontent = HTMLContent('''
-            <style>
-            body { font-family: Helvetica, sans-serif }
-            h1 { color: red; background-color: white; }
-            </style>
-            <h1>No content added!</h1>
-            <p>This screen would be way more interesting if content were added, right?</p>
-            ''', 'nocontent', duration=2)
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+        </head>
+        <body>
+          <div class="jumbotron">
+          <h1 class="text-danger">No content here!<span class="glyphicon glyphicon-question-sign"></span></h1>
+          <br><br>
+          <p>This screen would be way more interesting if content were added, right?</p>
+          </div></body></html>''', 'nocontent', duration=2)
 
 
         self.time = QLabel()

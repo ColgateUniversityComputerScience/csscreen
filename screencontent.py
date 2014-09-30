@@ -8,11 +8,77 @@ from datetime import datetime
 from time import mktime, time
 from threading import Lock
 import pickle
+from collections import namedtuple
+import re
 from PyQt4.QtCore import QUrl
 
 assert(sys.version_info.major == 3)
 
 CACHE_DIR = 'screen_content_cache'
+
+TimeConstraintSpec = namedtuple('TimeConstraintSpec', ['days','begin','end'])
+
+class TimeConstraint(metaclass=ABCMeta):
+    _dowmap = {}
+    _revdow = {}
+    for i,dayletter in enumerate('MTWRF'):
+        _dowmap[dayletter] = i+1
+        _dowmap[dayletter.lower()] = i+1
+        _revdow[i+1] = dayletter
+    print (_dowmap)
+
+    def __init__(self, s):
+        self.__constraint = TimeConstraint.parse_constraint(s)
+
+    @abstractmethod
+    def should_display(self, now):
+        '''
+        Predicate function that returns T/F depending whether the
+        content item should be displayed now, given the time
+        constraint.  now is a datetime object.
+        '''
+        pass
+
+    @staticmethod
+    def parse_constraint(s):
+        days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
+        mobj = re.fullmatch(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', s)
+        if not mobj:
+            mobj = re.fullmatch(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', s)
+
+        if not mobj:
+            raise Exception("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(s))
+
+        days = tuple([ TimeConstraint._dowmap[letter] for letter in mobj.groups()[0] ])
+        begin = int(mobj.groups()[1]) * 60 + int(mobj.groups()[2])
+        end = int(mobj.groups()[3]) * 60 + int(mobj.groups()[4])
+        return TimeConstraintSpec(days, begin, end)
+
+    def now_matches_constraint(self, now):
+        dow = now.weekday()
+        hourmin = now.hour * 60 + now.minute
+        return (not self.__constraint.days or dow in self.__constraint.days) and  self.__constraint.begin <= hourmin < self.__constraint.end
+
+    def __str__(self):
+        print (self.__constraint)
+        dow = ''.join([ TimeConstraint._revdow[dow] for dow in self.__constraint.days ])
+        begin = '{:02d}:{:02d}'.format(self.__constraint.begin // 60, self.__constraint.begin % 60)
+        end = '{:02d}:{:02d}'.format(self.__constraint.end // 60, self.__constraint.end % 60)
+        return "{}: {}:{}-{}".format(self.__class__.__name__, dow, begin, end)
+
+class Only(TimeConstraint):
+    def __init__(self, s):
+        TimeConstraint.__init__(self, s)
+
+    def should_display(self, now):
+        return self.now_matches_constraint(now)
+
+class Except(TimeConstraint):
+    def __init__(self, s):
+        TimeConstraint.__init__(self, s)
+        
+    def should_display(self, now):
+        return not self.now_matches_constraint(now)
 
 class ContentItem(metaclass=ABCMeta):
     def __init__(self, name, **kwargs):
@@ -265,3 +331,10 @@ class ContentQueue(object):
 if __name__ == '__main__':
     q = ContentQueue()
     q.shutdown()
+
+    o = Only('w:0945-1100')
+    print (o)
+    print (o.should_display(datetime.now()))
+    e = Except('t:0945-1000')
+    print (e)
+    print (e.should_display(datetime.now()))
