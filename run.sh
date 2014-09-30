@@ -1,2 +1,3 @@
 #!/bin/bash
-python3 screendisplay.py $*
+export DISPLAY=:0
+python3 screendisplay.py --fullscreen $*

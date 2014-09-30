@@ -25,7 +25,6 @@ class TimeConstraint(metaclass=ABCMeta):
         _dowmap[dayletter] = i+1
         _dowmap[dayletter.lower()] = i+1
         _revdow[i+1] = dayletter
-    print (_dowmap)
 
     def __init__(self, s):
         self.__constraint = TimeConstraint.parse_constraint(s)

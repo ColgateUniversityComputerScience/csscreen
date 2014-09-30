@@ -34,7 +34,7 @@ class Display(QWidget):
         </head>
         <body>
           <div class="jumbotron">
-          <h1 class="text-danger">No content here!<span class="glyphicon glyphicon-question-sign"></span></h1>
+          <h1><span class="alert alert-danger">No content here!</span></h1>
           <br><br>
           <p>This screen would be way more interesting if content were added, right?</p>
           </div></body></html>''', 'nocontent', duration=2)
@@ -98,6 +98,16 @@ def sigint(*args):
     global running
     running = False
 
+def write_pid():
+    with open('pid.txt', 'w') as outfile:
+        outfile.write("{}\n".format(os.getpid()))
+
+def remove_pid():
+    try:
+        os.unlink('pid.txt')
+    except:
+        pass
+
 if __name__ == '__main__':
     # setup
     app = QApplication(sys.argv)
@@ -121,6 +131,8 @@ if __name__ == '__main__':
     else:
         screen.show()
 
+    write_pid()
     app.exec_() # block here until we die
     rpcserver.stop()
     content_queue.shutdown()
+    remove_pid()
