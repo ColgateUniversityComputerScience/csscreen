@@ -109,7 +109,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
             xlen = int(self.headers['Content-Length'])
             indata = self.rfile.read(xlen).decode('ascii')
             contentspec = json.loads(indata)
-            print ("Got json data for new content: <{}>".format(contentspec))
+            # print ("Got json data for new content: <{}>".format(contentspec))
 
             name = contentspec.get('name', '')
             xtype = contentspec.get('type', '')

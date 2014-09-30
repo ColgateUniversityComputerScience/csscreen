@@ -117,7 +117,7 @@ class ImageContent(ContentItem):
         self.__filename = absfile
 
     def __write_data(self, filename, content):
-        outpath = os.path.join(CACHE_DIR, filename)
+        outpath = os.path.join(os.getcwd(), CACHE_DIR, filename)
         with open(outpath, 'wb') as outfile:
             outfile.write(content)
         return outpath
