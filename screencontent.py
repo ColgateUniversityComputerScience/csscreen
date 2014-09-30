@@ -98,10 +98,10 @@ class ContentItem(metaclass=ABCMeta):
 class URLContent(ContentItem):
     def __init__(self, url, name, **kwargs):
         super(URLContent, self).__init__(name, **kwargs)
-        self.__url = QUrl(url)
+        self.__url = url
 
     def renderSelf(self, webview):
-        webview.load(self.__url)
+        webview.load(QUrl(self.__url))
 
     def contentRemoved(self):
         pass
@@ -115,7 +115,6 @@ class ImageContent(ContentItem):
         # NB: filename should be an absolute path
         absfile = self.__write_data(filename, content)
         self.__filename = absfile
-        self.__imageurl = QUrl.fromLocalFile(absfile)
 
     def __write_data(self, filename, content):
         outpath = os.path.join(CACHE_DIR, filename)
@@ -124,7 +123,7 @@ class ImageContent(ContentItem):
         return outpath
         
     def renderSelf(self, webview):
-        webview.load(self.__imageurl)
+        webview.load(QUrl.fromLocalFile(self.__filename))
 
     def contentRemoved(self):
         os.unlink(self.__filename)
