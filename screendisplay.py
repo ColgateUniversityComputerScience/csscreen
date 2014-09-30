@@ -31,7 +31,7 @@ class Display(QWidget):
             </style>
             <h1>No content added!</h1>
             <p>This screen would be way more interesting if content were added, right?</p>
-            ''', 'No content!', 'No content added to queue')
+            ''', 'nocontent', duration=2)
 
 
         self.time = QLabel()
@@ -117,3 +117,4 @@ if __name__ == '__main__':
 
     app.exec_() # block here until we die
     rpcserver.stop()
+    content_queue.shutdown()
