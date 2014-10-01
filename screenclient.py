@@ -88,17 +88,16 @@ def construct_add_object(params):
         content['duration'] = dur
         del params['duration']
 
-    if 'begin' in params:
-        content['begin'] = parse_beginend(params['begin'])
-        del params['begin']
-
-    if 'end' in params:
-        content['end'] = parse_beginend(params['end'])
-        del params['end']
-
-    if 'begin' in content and 'end' not in content or 'end' in content and 'begin' not in content:
-        print ("Both 'begin' and 'end' must be specified for time-windowed content")
-        sys.exit()
+    content['only'] = []
+    content['except'] = []
+    for onlystr in params.get('only',[]):
+        verify_time_constraint(onlystr)
+        content['only'].append(onlystr)
+    for exceptstr in params.get('except',[]):
+        verify_time_constraint(exceptstr)
+        content['except'].append(exceptstr)
+    params.pop('only',None)
+    params.pop('except',None)
 
     if params:
         print ("Unrecognized parameters to 'add' command specified: {}".format(' '.join(params.keys())))
@@ -106,13 +105,13 @@ def construct_add_object(params):
 
     return content
 
-def parse_beginend(s):
-    if re.fullmatch('\d\d\d\d', s):
-        return int(s[:2]) * 60 + int(s[2:])
-    elif re.fullmatch('\d\d:\d\d', s):
-        return int(s[:2]) * 60 + int(s[3:])
-    else:
-        print ("Unrecognized format for begin or end string {}.  Must be HHMM or HH:MM".format(s))
+def verify_time_constraint(xstr):
+    days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
+    mobj = re.fullmatch(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', s)
+    if not mobj:
+        mobj = re.fullmatch(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', s)
+    if not mobj:
+        print ("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(s))
         sys.exit()
 
 def add_content(conn, password, args):
@@ -139,14 +138,72 @@ if __name__ == '__main__':
     parser.add_argument('--password', '-p', default='password', help='Specify password used to authenticate requests for modifying and querying content on the display')
     parser.add_argument('--host', '-H', default='localhost', help='Specify hostname or IP address of display server')
     parser.add_argument('--port', '-P', default=4443, help='Specify port number of display server')
-    parser.add_argument('action', nargs=1, type=str, choices=['get','show','list','delete','add'], help="Query action.  Must be one of get, show, list, delete, add.")
-    parser.add_argument('action_args', nargs='*', help="Any arguments to the specified action")
+    parser.add_argument('action', nargs=1, type=str, choices=['get','show','list','delete','add','help'], help="Query action.  Must be one of get, show, list, delete, add, or help.  The 'help' action gives detailed help on actions and arguments.")
+    parser.add_argument('action_args', nargs='*', help='''Any arguments to the specified action.  Use the option --actions to show detailed help for valid action/argument combinations.''')
     args = parser.parse_args()
 
     conn = get_connection(args.host, args.port)
     action = args.action[0]
 
-    if action == 'list':
+    if action == 'help':
+        print ('''
+The following are the valid combinations of action and arguments:
+    get <name>
+    show <name>
+        The get/show action requires the name of the content item for which 
+        to display details.
+
+    list
+        The list action lists all content items installed in the display app.
+
+    delete <name>
+        The delete action requires the name of the content item to delete.  
+        Once deleted, all resources (e.g., files, etc.) consumed by the 
+        content item are purged.
+
+    add name=<name> type=<image|html|url> content=<filename or url> duration=<seconds> expire=YYYYMMDD[HH[MM[SS]]] only=[MTWRF:]HH:MM-HH:MM except=[MTWRF:]HH:MM-HH:MM
+        The add action uploads and installs a new content item in the display 
+        app.  All arguments to the add command must be of the form "key=value",
+        and there cannot be any spaces within the key or value (or the space
+        must be escaped).  The only required arguments are name, type, and 
+        content.  For image and html content types, the content argument must
+        be a file containing either an image or html text, respectively.
+        For the url content type, the content argument must be a valid URL.
+
+        The arguments duration, expire, only and except are optional.  If
+        duration is not specified, the default display duration is 12 seconds.
+        The expire argument can be used to specify an expiration date and time
+        for the content, after which time it will be purged from the display
+        app.  The expire argument can specify just the date as YYYYMMDD on which
+        content expires, in which case the content will expire at midnight
+        (time 00:00) on that day.  The hour (HH), minute (MM) and second (SS)
+        can also optionally be specified to give an expiration time on the
+        given date.
+        
+        The only and except arguments can be used to specify *time constraints*
+        on displaying content.  The *only* argument can be used to specify that
+        the content should *only* be displayed in a time range, and optionally
+        on a given set of days of the week.  The *except* argument can be
+        used to specify that the content should be displayed normally in
+        rotation, *except* for particular time ranges, and optionally on some
+        days of the week.  The argument format for only and except is as
+        follows: the day of the week is first optionally specified using
+        a single-letter abbreviation for the day of week (MTWRF).  Following
+        the day of week, a time range in the form HHMM-HHMM (or HH:MM-HH:MM)
+        can be given to specify the time of day constraint.  The hour must
+        be given in 24-hour format (i.e., 00-23).  Multiple except and/or
+        only contraints can be given, but the app does *not* validate that
+        the contraints are reasonable.  
+        Examples:
+           only=MWF:08:20-9:10  --  Specifies that a content item should 
+                                    only be displayed Monday, Wednesday,
+                                    and Friday between 8:20am and 9:10am.
+           except=14:45-16:45   --  Specifies that a content item should
+                                    be displayed any time *except* during
+                                    the time window of 2:45pm-4:45pm on
+                                    any day of the week.
+        ''')
+    elif action == 'list':
         list_content(conn, args.password)
     elif action == 'get' or action == 'show':
         if len(args.action_args) != 1:

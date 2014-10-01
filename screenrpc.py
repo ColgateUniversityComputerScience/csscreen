@@ -145,7 +145,7 @@ class ScreenRpcServer(QThread):
         QThread.__init__(self)
         
         self.__content_queue = content_queue
-        self.__httpd = HTTPServer(('localhost', 4443), MyRequestHandler)
+        self.__httpd = HTTPServer(('0.0.0.0', 4443), MyRequestHandler)
         self.__httpd.socket = ssl.wrap_socket(self.__httpd.socket, certfile='server.pem', server_side=True)
         self.__httpd.timeout = 0.0
 

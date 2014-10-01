@@ -242,7 +242,7 @@ class ContentQueue(object):
     def __create_cache_dir(self):
         try:
             os.makedirs(os.path.join(os.getcwd(), CACHE_DIR))
-        except FileExistsError:
+        except:
             pass
 
     def __restore_content(self):
@@ -251,7 +251,7 @@ class ContentQueue(object):
         '''
         try:
             pfile = open(ContentQueue.SAVE_FILE, 'rb')
-        except FileNotFoundError:
+        except:
             self.__queue = []
             return
             
