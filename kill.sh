@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # all screen to go to sleep
+cd /home/pi/csscreen
 export DISPLAY=:0
 xset +dpms 
 xset s blank

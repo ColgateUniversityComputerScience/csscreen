@@ -1,4 +1,7 @@
 #!/bin/bash
+
+cd /home/pi/csscreen
+
 export DISPLAY=:0
 
 # wake screen up and make it stay on
