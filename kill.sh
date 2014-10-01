@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # all screen to go to sleep
+export DISPLAY=:0
 xset dpms standby
 xset s blank
 
