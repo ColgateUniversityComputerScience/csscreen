@@ -52,18 +52,18 @@ def construct_add_object(params):
         sys.exit()
 
     if params['type'] == 'url':
-        check_parm('url', params)
-        content['content'] = base64.b64encode(params['url'].encode('ascii')).decode('ascii')
-        del params['url']
+        check_parm('content', params)
+        content['content'] = base64.b64encode(params['content'].encode('ascii')).decode('ascii')
+        del params['content']
     elif params['type'] == 'image':
-        check_parm('file', params)
-        content['content'] = encode_filedata(params['file']).decode('ascii')
-        content['filename'] = os.path.basename(params['file'])
+        check_parm('content', params)
+        content['content'] = encode_filedata(params['content']).decode('ascii')
+        content['filename'] = os.path.basename(params['content'])
         del params['file']
     elif params['type'] == 'html':
-        check_parm('file', params)
-        content['content'] = encode_filedata(params['file']).decode('ascii')
-        del params['file']
+        check_parm('content', params)
+        content['content'] = encode_filedata(params['content']).decode('ascii')
+        del params['content']
 
     del params['type']
 
@@ -107,25 +107,29 @@ def construct_add_object(params):
 
 def verify_time_constraint(xstr):
     days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
-    mobj = re.fullmatch(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', s)
+    mobj = re.fullmatch(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', xstr)
     if not mobj:
-        mobj = re.fullmatch(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', s)
+        mobj = re.fullmatch(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', xstr)
     if not mobj:
-        print ("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(s))
+        print ("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(xstr))
         sys.exit()
 
 def add_content(conn, password, args):
     # assume that args is a list of strings in the form:
     #   name=x type=url|image|html expire=YYYYMMDDHHMMSS begin=HHMM end=HHMM duration=int
     #   no spaces between argument key/value pairs
-    params = {}
+    params = {'except':[], 'only':[]}
     for kvstr in args:
         try:
             k,v = kvstr.split('=')
         except ValueError:
             print ("Arguments to the 'add' action must be key=value pairs with no spaces")
             sys.exit()
-        params[k] = v
+
+        if k == 'except' or k == 'only':
+            params[k].append(v)
+        else:
+            params[k] = v
 
     content = construct_add_object(params)
     xdata = json.dumps(content)
