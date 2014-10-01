@@ -116,7 +116,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
             item = None
             contentspec.pop('name', '')
             contentspec.pop('type', '')
-            content = base64.b64decode(contentspec.get('content', ''))
+            content = base64.b64decode(contentspec.get('content', '').encode('utf-8'))
             contentspec.pop('content','')
 
             errorstr = ''
