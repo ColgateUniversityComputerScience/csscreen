@@ -126,8 +126,8 @@ if __name__ == '__main__':
 
     # block here until app dies
     if args.fullscreen:
-        screen.showMaximized()
-        # screen.showFullScreen()
+        # screen.showMaximized()
+        screen.showFullScreen()
     else:
         screen.show()
 
