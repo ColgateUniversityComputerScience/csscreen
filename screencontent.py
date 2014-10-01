@@ -5,11 +5,12 @@ import os
 import os.path
 from abc import ABCMeta,abstractmethod
 from datetime import datetime
-from time import mktime, time
+from time import mktime, time, asctime
 from threading import Lock
 import pickle
 from collections import namedtuple
 import re
+import textwrap
 from PyQt4.QtCore import QUrl
 
 assert(sys.version_info.major == 3)
@@ -22,9 +23,9 @@ class TimeConstraint(metaclass=ABCMeta):
     _dowmap = {}
     _revdow = {}
     for i,dayletter in enumerate('MTWRF'):
-        _dowmap[dayletter] = i+1
-        _dowmap[dayletter.lower()] = i+1
-        _revdow[i+1] = dayletter
+        _dowmap[dayletter] = i
+        _dowmap[dayletter.lower()] = i
+        _revdow[i] = dayletter
 
     def __init__(self, s):
         self.__constraint = TimeConstraint.parse_constraint(s)
@@ -56,10 +57,9 @@ class TimeConstraint(metaclass=ABCMeta):
     def now_matches_constraint(self, now):
         dow = now.weekday()
         hourmin = now.hour * 60 + now.minute
-        return (not self.__constraint.days or dow in self.__constraint.days) and  self.__constraint.begin <= hourmin < self.__constraint.end
+        return (not self.__constraint.days or dow in self.__constraint.days) and  (self.__constraint.begin <= hourmin < self.__constraint.end)
 
     def __str__(self):
-        print (self.__constraint)
         dow = ''.join([ TimeConstraint._revdow[dow] for dow in self.__constraint.days ])
         begin = '{:02d}:{:02d}'.format(self.__constraint.begin // 60, self.__constraint.begin % 60)
         end = '{:02d}:{:02d}'.format(self.__constraint.end // 60, self.__constraint.end % 60)
@@ -82,27 +82,45 @@ class Except(TimeConstraint):
 class ContentItem(metaclass=ABCMeta):
     def __init__(self, name, **kwargs):
         self.__display_duration = int(kwargs.get('duration', 10))
+        self.__last_display = '(none)'
 
         # datetime object
-        expiretime = kwargs.get('expiry', None)
-        if expiretime:
-            self.__expire_datetime = datetime.strptime(expiretime, '%Y%m%d%H%M%S')
+        estr = kwargs.get('expiry', None)
+        if estr:
+            if len(estr) == 8:
+                timespec = datetime.strptime(estr, '%Y%m%d')
+            elif len(estr) == 10:
+                timespec = datetime.strptime(estr, '%Y%m%d%H')
+            elif len(estr) == 12:
+                timespec = datetime.strptime(estr, '%Y%m%d%H%M')
+            elif len(estr) == 14:
+                timespec = datetime.strptime(estr, '%Y%m%d%H%M%S')
+            self.__expire_datetime = timespec
         else:
             self.__expire_datetime = None
 
-        # hour*60 + min
-        self.__display_time_begin = kwargs.get('begin', None)
-        if self.__display_time_begin:
-            self.__display_time_begin = int(self.__display_time_begin)
-        self.__display_time_end = kwargs.get('end', None)
-        if self.__display_time_end:
-            self.__display_time_end = int(self.__display_time_end)
+        self.__except = []
+        self.__only = []
+
+        xexcept = kwargs.get('xexcept', None)
+        if isinstance(xexcept, list):
+            for xstr in xexcept:
+                self.__except.append(Except(xstr))
+        elif xexcept is not None:
+            raise Exception("xexcept argument needs a list")
+
+        only = kwargs.get('only', None)
+        if isinstance(only, list):
+            for xstr in only:
+                self.__only.append(Only(xstr))
+        elif only is not None:
+            raise Exception("only argument needs a list")
 
         self.__display_count = 0
         self.__name = name
 
     @abstractmethod
-    def renderSelf(self, webview):
+    def render(self, webview):
         '''
         Method which is invoked when the content item should display itself.
         webview is a QWebView object 
@@ -122,12 +140,23 @@ class ContentItem(metaclass=ABCMeta):
         return self.__display_duration
 
     @property
+    def last_display(self):
+        '''
+        Get the last time at which this content was displayed.
+        '''
+        return self.__last_display
+
+    @property
     def display_count(self):
         '''
         Get the number of times this content item has been displayed on
         screen.
         '''
         return self.__display_count
+
+    def displayed(self):
+        self.__last_display = asctime()
+        self.__display_count += 1
 
     @property
     def expiry(self):
@@ -137,20 +166,11 @@ class ContentItem(metaclass=ABCMeta):
         '''
         return self.__expire_datetime
 
-    @property
-    def display_time_window(self):
-        '''
-        Return a 2-tuple of the time window in which this content item
-        should be displayed.  If there is no time window defined for
-        a content item, return None,None.
-        '''
-        return (self.__display_time_begin,self.__display_time_end)
-
     def __str__(self):
-        return "{} ({}) duration:{}".format(self.__class__.__name__, self.name, self.display_duration)
+        return "{} ({}) duration:{} last_display:{} display_count:{} expire:{} {} {}".format(self.__class__.__name__, self.name, self.display_duration, self.last_display, self.display_count, self.expiry, ','.join([str (e) for e in self.__only]), ','.join([str(e) for e in self.__except]))
 
     @abstractmethod
-    def contentRemoved(self):
+    def content_removed(self):
         '''
         This method is called when the content is removed from the content
         queue.  It must be overridden by derived classes.  The main purpose
@@ -160,15 +180,43 @@ class ContentItem(metaclass=ABCMeta):
         '''
         pass
 
+    def should_display(self, now):
+        '''
+        Return True if this item should be displayed now.  Handles all
+        the only/except time-constraints for this content item.
+
+        We only display an item if it satisfies *all except* clauses (i.e.,
+        current time is not a "black-listed" time), and satisfies *any*
+        of the *only* constraints (i.e., it satisfies at least one of the
+        "whitelisted" times).
+        '''
+        # definitely display if there are no constraints specified
+        if not (self.__only or self.__except):
+            return True
+
+        # otherwise, respect the constraints
+        if self.__only:
+            xonly = [ constraint.should_display(now) for constraint in self.__only ]
+        else:
+            xonly = [True]
+
+        if self.__except:
+            xexcept = [ constraint.should_display(now) for constraint in self.__except ]
+        else:
+            xexcept = [True]
+        return all(xexcept) and any(xonly)
+
+
 class URLContent(ContentItem):
     def __init__(self, url, name, **kwargs):
         super(URLContent, self).__init__(name, **kwargs)
         self.__url = url
 
-    def renderSelf(self, webview):
+    def render(self, webview):
+        self.displayed()
         webview.load(QUrl(self.__url))
 
-    def contentRemoved(self):
+    def content_removed(self):
         pass
 
     def __str__(self):
@@ -187,10 +235,11 @@ class ImageContent(ContentItem):
             outfile.write(content)
         return outpath
         
-    def renderSelf(self, webview):
+    def render(self, webview):
+        self.displayed()
         webview.load(QUrl.fromLocalFile(self.__filename))
 
-    def contentRemoved(self):
+    def content_removed(self):
         os.unlink(self.__filename)
 
     def __str__(self):
@@ -201,14 +250,15 @@ class HTMLContent(ContentItem):
         super(HTMLContent, self).__init__(name, **kwargs)
         self.__text = htmltext
 
-    def renderSelf(self, webview):
+    def render(self, webview):
+        self.displayed()
         webview.setHtml(self.__text)
 
-    def contentRemoved(self):
+    def content_removed(self):
         pass
 
     def __str__(self):
-        return '{} {}...'.format(ContentItem.__str__(self), self.__text[:20])
+        return "{} '{}'".format(ContentItem.__str__(self), textwrap.shorten(self.__text, width=20))
 
 class NoSuitableContentException(Exception):
     '''
@@ -273,10 +323,10 @@ class ContentQueue(object):
         killlist = []
         with self.__qlock:
             for i in range(len(self.__queue)):
-                if self.__queue[i].expiry and self.__queue[i].expiry >= now:
+                if self.__queue[i].expiry and now >= self.__queue[i].expiry:
                     killlist.append(i)
             for i in killlist:
-                self.__queue[i].contentRemoved()
+                self.__queue[i].content_removed()
                 del self.__queue[i]
             if killlist:
                 self.__save_content()
@@ -292,18 +342,12 @@ class ContentQueue(object):
             i = 0
 
             now = datetime.now()
-            hrmin = now.hour * 60 + now.minute
-
-
             while True:
                 xnext = self.__queue.pop(0)
                 self.__queue.append(xnext)
                 i += 1 
                 
-                begin,end = xnext.display_time_window
-                if begin == end == None:
-                    return xnext                    
-                elif begin <= hrmin <= end:
+                if xnext.should_display(now):
                     return xnext
 
                 if i == maxiter:
@@ -318,7 +362,7 @@ class ContentQueue(object):
                     break
 
             if killidx != -1:
-                self.__queue[i].contentRemoved()
+                self.__queue[i].content_removed()
                 del self.__queue[i]
                 self.__save_content()
 
@@ -334,6 +378,10 @@ if __name__ == '__main__':
     o = Only('w:0945-1100')
     print (o)
     print (o.should_display(datetime.now()))
-    e = Except('t:0945-1000')
+
+    e = Except('twr:2204-2215')
     print (e)
     print (e.should_display(datetime.now()))
+
+    x = HTMLContent('<html></html>', 'blah', xexcept=['t:0945-2000'])
+    print (x)

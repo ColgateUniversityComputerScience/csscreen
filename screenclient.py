@@ -89,13 +89,13 @@ def construct_add_object(params):
         del params['duration']
 
     content['only'] = []
-    content['except'] = []
+    content['xexcept'] = []
     for onlystr in params.get('only',[]):
         verify_time_constraint(onlystr)
         content['only'].append(onlystr)
     for exceptstr in params.get('except',[]):
         verify_time_constraint(exceptstr)
-        content['except'].append(exceptstr)
+        content['xexcept'].append(exceptstr)
     params.pop('only',None)
     params.pop('except',None)
 

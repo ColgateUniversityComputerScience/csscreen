@@ -1,0 +1,4 @@
+# start the display server at 7am every day
+0 7 * * * /home/pi/csscreen/run.sh
+# kill the display server at 11pm every day
+0 23 * * * /home/pi/csscreen/kill.sh

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# all screen to go to sleep
+xset dpms standby
+xset s blank
+
 if [[ -f pid.txt ]]; then
     kill `cat pid.txt` 2>/dev/null
     sleep 2

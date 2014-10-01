@@ -89,7 +89,7 @@ class Display(QWidget):
             item = self.__nocontent
 
         # as content item to render itself to the display
-        item.renderSelf(self.webview)
+        item.render(self.webview)
 
         # display_duration is in sec
         QTimer.singleShot(item.display_duration*1000, self.content_update) 

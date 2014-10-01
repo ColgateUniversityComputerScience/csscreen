@@ -41,7 +41,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         # valid GET requests: 
         #    /display
         #    /display/{name}
-        print ("GET received: {}".format(self.path))
+        # print ("GET received: {}".format(self.path))
 
         if not self.__verify_password():
             return
@@ -61,16 +61,16 @@ class MyRequestHandler(BaseHTTPRequestHandler):
                 response_data['status'] = 'failure'
                 response_data['reason'] = "no content object named '{}'".format(xname)
         else:
-            response_data['status'] = 'failure'
-            response_data['reason'] = 'invalid request path'
+            self.send_error(404)
+            return
 
         self.__do_response(response_data)
 
     def do_DELETE(self):
         # valid DELETE request:
         #   /display/{name}
+        # print ("DELETE received: {}".format(self.path))
 
-        print ("DELETE received: {}".format(self.path))
         if not self.__verify_password():
             return
 
@@ -86,8 +86,8 @@ class MyRequestHandler(BaseHTTPRequestHandler):
                 response_data['status'] = 'failure'
                 response_data['reason'] = "no content object named '{}'".format(xname)
         else:
-            response_data['status'] = 'failure'
-            response_data['reason'] = 'invalid request path'
+            self.send_error(404)
+            return
 
         self.__do_response(response_data)
 
@@ -95,7 +95,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         # valid POST requests:
         #   /display
-        print ("POST received: {}".format(self.path))
+        # print ("POST received: {}".format(self.path))
 
         if not self.__verify_password():
             return
@@ -103,8 +103,8 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         parsed_path = urlparse(self.path)
         response_data = { 'status':'success' }
         if parsed_path.path != '/display':
-            response_data['status'] = 'failure'
-            response_data['reason'] = 'invalid request path'
+            self.send_error(404)
+            return
         else:
             xlen = int(self.headers['Content-Length'])
             indata = self.rfile.read(xlen).decode('ascii')
@@ -119,18 +119,24 @@ class MyRequestHandler(BaseHTTPRequestHandler):
             content = base64.b64decode(contentspec.get('content', ''))
             contentspec.pop('content','')
 
-            if xtype == 'url':
-                item = URLContent(content.decode('ascii'), name, **contentspec)
-            elif xtype == 'image':
-                xfilename = contentspec.get('filename', '')
-                contentspec.pop('filename', '')
-                item = ImageContent(xfilename, name, content=content, **contentspec)
-            elif xtype == 'html':
-                item = HTMLContent(content.decode('ascii'), name, **contentspec)
+            errorstr = ''
 
-            if not (name and xtype and item):
+            try:
+                if xtype == 'url':
+                    item = URLContent(content.decode('ascii'), name, **contentspec)
+                elif xtype == 'image':
+                    xfilename = contentspec.get('filename', '')
+                    contentspec.pop('filename', '')
+                    item = ImageContent(xfilename, name, content=content, **contentspec)
+                elif xtype == 'html':
+                    item = HTMLContent(content.decode('ascii'), name, **contentspec)
+
+            except Exception as e:
+                errorstr = str(e)
+
+            if errorstr or not (name and xtype and item):
                 response_data['status'] = 'failure'
-                response_data['reason'] = "failed to create content for specification {}".format(contentspec)
+                response_data['reason'] = "failed to create content for specification {} {}".format(contentspec, errorstr)
             else:
                 self.server.content_queue.add_content(item)
                 response_data['reason'] = "Create item: {}".format(str(item))
@@ -138,7 +144,8 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         self.__do_response(response_data)
 
     def log_message(self, fmt, *args):
-        print ("Log: {}".format('/'.join(args)))
+        pass
+        # print (fmt % args)
 
 class ScreenRpcServer(QThread):
     def __init__(self, content_queue, password):
