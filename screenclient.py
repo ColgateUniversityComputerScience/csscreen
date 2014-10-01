@@ -59,7 +59,7 @@ def construct_add_object(params):
         check_parm('content', params)
         content['content'] = encode_filedata(params['content']).decode('ascii')
         content['filename'] = os.path.basename(params['content'])
-        del params['file']
+        del params['content']
     elif params['type'] == 'html':
         check_parm('content', params)
         content['content'] = encode_filedata(params['content']).decode('ascii')
