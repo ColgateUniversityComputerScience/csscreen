@@ -258,7 +258,7 @@ class HTMLContent(ContentItem):
         pass
 
     def __str__(self):
-        return "{} '{}'".format(ContentItem.__str__(self), textwrap.shorten(self.__text, width=20))
+        return "{} '{}...'".format(ContentItem.__str__(self), self.__text[:20])
 
 class NoSuitableContentException(Exception):
     '''
