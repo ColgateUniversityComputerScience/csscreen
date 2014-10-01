@@ -2,7 +2,7 @@
 
 # all screen to go to sleep
 export DISPLAY=:0
-xset dpms standby
+xset +dpms 
 xset s blank
 
 if [[ -f pid.txt ]]; then
