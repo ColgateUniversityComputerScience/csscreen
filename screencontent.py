@@ -42,9 +42,9 @@ class TimeConstraint(metaclass=ABCMeta):
     @staticmethod
     def parse_constraint(s):
         days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
-        mobj = re.fullmatch(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', s)
+        mobj = re.match(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', s)
         if not mobj:
-            mobj = re.fullmatch(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', s)
+            mobj = re.match(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', s)
 
         if not mobj:
             raise Exception("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(s))

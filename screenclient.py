@@ -107,9 +107,9 @@ def construct_add_object(params):
 
 def verify_time_constraint(xstr):
     days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
-    mobj = re.fullmatch(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', xstr)
+    mobj = re.match(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', xstr)
     if not mobj:
-        mobj = re.fullmatch(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', xstr)
+        mobj = re.match(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', xstr)
     if not mobj:
         print ("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(xstr))
         sys.exit()
