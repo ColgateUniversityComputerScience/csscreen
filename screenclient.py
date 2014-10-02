@@ -121,10 +121,18 @@ def add_content(conn, password, args):
     params = {'except':[], 'only':[]}
     for kvstr in args:
         try:
-            k,v = kvstr.split('=')
-        except ValueError:
-            print ("Arguments to the 'add' action must be key=value pairs with no spaces")
+            args = kvstr.split('=')
+        except Exception as e:
+            print ("Arguments to the 'add' action must be key=value pairs with no spaces (exception text: {})".format(str(e)))
             sys.exit()
+
+        if len(args) < 2:
+            print ("Argument {} doesn't appear to follow key=value format".format(kvstr))
+            sys.exit()
+        k = args[0]
+        v = '='.join(args[1:]) # there may be more than 1 = in the k=v string
+                               # the value may have an embedded = (e.g., for
+                               # a URL with query string
 
         if k == 'except' or k == 'only':
             params[k].append(v)
