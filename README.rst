@@ -142,13 +142,13 @@ Here are a few full examples of using screenclient.py:
 
  * ``python3 screenclient.py --host 149.43.200.200 list``: list all content installed on the display server located at (totally fake) IP address 149.43.200.200.  Note that the host defaults to ``localhost``, so if you are running ``screenclient.py`` on the Pi itself, you don't need to specify host or port.  The remaining examples don't specify the host or port for clarity.
 
- * ``python3 screendisplay.py show directory``: display the details of the content item named "directory".
+ * ``python3 screenclient.py show directory``: display the details of the content item named "directory".
 
- * ``python3 screendisplay.py delete directory``: delete the content item named "directory".
+ * ``python3 screenclient.py delete directory``: delete the content item named "directory".
 
- * ``python3 screendisplay.py add name=teaalert type=html content=tea.html only=T:11:10-12:10``: upload a new HTML content item, but *only* display it on Tuesdays between 11:10am and 12:10pm.  Note that the file tea.html must exist (perhaps obvious, but worth stating).
+ * ``python3 screenclient.py add name=teaalert type=html content=tea.html only=T:11:10-12:10``: upload a new HTML content item, but *only* display it on Tuesdays between 11:10am and 12:10pm.  Note that the file tea.html must exist (perhaps obvious, but worth stating).
 
- * ``python3 screendisplay.py add name=directory type=image content=directory.png duration=20``: upload a new image content item, and display it for 20 seconds on screen. 
+ * ``python3 screenclient.py add name=directory type=image content=directory.png duration=20``: upload a new image content item, and display it for 20 seconds on screen. 
 
 
 Footnotes
