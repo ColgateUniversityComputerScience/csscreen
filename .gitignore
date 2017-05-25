@@ -3,3 +3,4 @@ content_queue.bin
 screen_content_cache
 server.pem
 __pycache__
+xenv
