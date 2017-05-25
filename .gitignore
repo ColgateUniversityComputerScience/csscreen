@@ -4,3 +4,4 @@ screen_content_cache
 server.pem
 __pycache__
 xenv
+*db.sqlite3
