@@ -1,5 +1,7 @@
 from unittest.mock import Mock
-from django.test import TestCase
+from django.test import TestCase, Client
+from django.urls import reverse
+from django.contrib.auth.models import User
 from .models import Screen, ScreenGroup, ScreenNotAccessible
 
 
@@ -8,6 +10,8 @@ class ScreenTests(TestCase):
             self.s = Screen(name="test", ipaddress="10.0.1.9",
                             password="TEST")
             self.s.save()
+            self.user = User.objects.create_user('js', 'js@localhost', 'test')
+            self.user.save()
 
         def test_fetch1(self):
             xdict = \
@@ -47,3 +51,14 @@ class ScreenTests(TestCase):
             })
             with self.assertRaises(ScreenNotAccessible):
                 r = self.s.fetch_current()
+
+        def test_index(self):
+            c = Client()
+            # not logged in; should redirect to login
+            response = c.get(reverse('index'), follow=True)
+            self.assertRedirects(response, reverse('login')+'?next=//')
+            self.assertTemplateUsed(response, 'registration/login.html')
+            c.login(username='js', password='test')
+            response = c.get(reverse('index'))
+            self.assertTemplateUsed(response, 'screens/index.html')
+            self.assertQuerysetEqual(response.context['screens'], [repr(self.s)])

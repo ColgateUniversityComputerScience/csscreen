@@ -28,7 +28,7 @@ class Screen(models.Model):
     groups = models.ManyToManyField(ScreenGroup)
 
     class Meta:
-        ordering = 'name'
+        ordering = ('name',)
 
     def _remote_call(self, xtype):
         xpass = "?password={}".format(self.password)
