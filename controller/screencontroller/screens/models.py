@@ -1,9 +1,6 @@
-# import http.client
-# import json
-import requests
 from datetime import datetime
-
 from django.db import models
+import requests
 
 
 class ScreenNotAccessible(Exception):
@@ -15,6 +12,12 @@ class ScreenGroup(models.Model):
 
     groupname = models.CharField(max_length=100)
 
+    class Meta:
+        ordering = ('groupname',)
+
+    def __str__(self):
+        return self.groupname
+
 
 class Screen(models.Model):
     """Represents a deployed screen."""
@@ -23,9 +26,9 @@ class Screen(models.Model):
     ipaddress = models.GenericIPAddressField()
     port = models.SmallIntegerField(default=4443)
     password = models.CharField(max_length=100)
-    lastfetch = models.DateTimeField(null=True)
-    lastupdate = models.DateTimeField(auto_now=True)
-    groups = models.ManyToManyField(ScreenGroup)
+    lastfetch = models.DateTimeField(null=True, blank=True, editable=False)
+    lastupdate = models.DateTimeField(auto_now=True, editable=False)
+    groups = models.ManyToManyField(ScreenGroup, blank=True)
 
     class Meta:
         ordering = ('name',)
@@ -54,3 +57,6 @@ class Screen(models.Model):
               ScreenNotAccessible("Connection succeeded but call failed.")
         self._cache = rdata['content']
         return self._cache
+
+    def __str__(self):
+        return "{} @{}".format(self.name, self.ipaddress)

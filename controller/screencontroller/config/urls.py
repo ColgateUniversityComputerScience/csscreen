@@ -22,5 +22,5 @@ from screens.views import index
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^accounts/', include('django.contrib.auth.urls')),
-    url(r'^/', index, name='index'),
+    url(r'^', index, name='index'),
 ]

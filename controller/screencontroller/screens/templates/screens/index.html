@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 
+{% block title %}
+Manage screens and screen groups
+{% endblock %}
+
 {% block content %}
+<ul>
     {% for screen in screens %}
         <li>{{ screen }}</li>
+    {% empty %}
+    <li>No screens!
     {% endfor %}
-{% endblock content %}
+</ul>
+{% endblock %}

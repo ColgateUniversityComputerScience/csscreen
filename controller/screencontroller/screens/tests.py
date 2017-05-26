@@ -56,7 +56,7 @@ class ScreenTests(TestCase):
             c = Client()
             # not logged in; should redirect to login
             response = c.get(reverse('index'), follow=True)
-            self.assertRedirects(response, reverse('login')+'?next=//')
+            self.assertRedirects(response, reverse('login')+'?next=/')
             self.assertTemplateUsed(response, 'registration/login.html')
             c.login(username='js', password='test')
             response = c.get(reverse('index'))
