@@ -10,6 +10,12 @@ class ScreenNotAccessible(Exception):
     pass
 
 
+class ScreenGroup(models.Model):
+    """Represents an arbitrary group of screens."""
+
+    groupname = models.CharField(max_length=100)
+
+
 class Screen(models.Model):
     """Represents a deployed screen."""
 
@@ -19,6 +25,10 @@ class Screen(models.Model):
     password = models.CharField(max_length=100)
     lastfetch = models.DateTimeField(null=True)
     lastupdate = models.DateTimeField(auto_now=True)
+    groups = models.ManyToManyField(ScreenGroup)
+
+    class Meta:
+        ordering = 'name'
 
     def _remote_call(self, xtype):
         xpass = "?password={}".format(self.password)
@@ -44,10 +54,3 @@ class Screen(models.Model):
               ScreenNotAccessible("Connection succeeded but call failed.")
         self._cache = rdata['content']
         return self._cache
-
-
-class ScreenGroup(models.Model):
-    """Represents an arbitrary group of screens."""
-
-    groupname = models.CharField(max_length=100)
-    screens = models.ManyToManyField(Screen)
