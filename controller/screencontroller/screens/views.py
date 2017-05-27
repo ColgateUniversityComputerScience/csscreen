@@ -5,6 +5,7 @@ from .models import Screen, ScreenGroup
 
 @login_required
 def index(request):
-    screens = Screen.objects.all().prefetch_related('groups')
+    screens = Screen.get_all_and_ping()
     context = {'screens': screens}
+
     return render(request, "screens/index.html", context)

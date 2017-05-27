@@ -33,22 +33,30 @@ class Screen(models.Model):
     class Meta:
         ordering = ('name',)
 
-    def _remote_call(self, xtype):
+    @staticmethod
+    def get_all_and_ping():
+        screens = Screen.objects.all().prefetch_related('groups')
+        for s in screens:
+            s.ping()
+        return screens
+
+    def _remote_call(self, xtype, command):
         xpass = "?password={}".format(self.password)
-        if xtype == 'list':
+        if xtype == 'get':
             response = \
-                requests.get("https://{}:{}/display{}".format(
-                             self.ipaddress, self.port, xpass),
-                             verify=False)
+                requests.get(
+                  f"https://{self.ipaddress}:{self.port}/{command}{xpass}",
+                  verify=False,
+                  timeout=1.0)
         if response.status_code != 200:
             raise \
               ScreenNotAccessible(
-                "Status code failure: {}".format(response.status_code))
+                f"Status code failure: {response.status_code}")
         return response.json()
 
     def fetch_current(self):
         self._cache = {}
-        rdata = self._remote_call('list')
+        rdata = self._remote_call('get', 'display')
         self._update_status = rdata['status']
         if rdata['status'] == 'success':
             self.lastfetch = datetime.now()
@@ -58,5 +66,22 @@ class Screen(models.Model):
         self._cache = rdata['content']
         return self._cache
 
+    def ping(self):
+        # check if we should return cached value
+        now = datetime.now()
+        if hasattr(self, '_last_ping'):
+            delta = now - self._last_ping
+            if delta.total_seconds() < 60:
+                return self._ping_up
+
+        self._ping_up = False
+        self._last_ping = datetime.now()
+        try:
+            rdata = self._remote_call('get', 'ping')
+            self._ping_up = True
+        except:
+            pass
+        return self._ping_up
+
     def __str__(self):
-        return "{} @{}".format(self.name, self.ipaddress)
+        return f"{self.name} @{self.ipaddress}"

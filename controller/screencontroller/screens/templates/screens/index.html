@@ -8,6 +8,9 @@ Manage screens and screen groups
 <ul>
     {% for screen in screens %}
         <li>{{ screen }}</li>
+        <ul>
+            <li>{{ screen.ping }}
+        </ul>
     {% empty %}
     <li>No screens!
     {% endfor %}
