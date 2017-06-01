@@ -99,8 +99,8 @@ def construct_add_object(params):
         content['content'] = encode_filedata(params['content']).decode('ascii')
         del params['content']
         for i, asset in enumerate(params.get('asset')):
-            content[f"asset{i}_name"] = base64.b64encode(asset).decode('ascii')
-            content[f"asset{i}_content"] = \
+            content[f"assetname_{i}"] = asset
+            content[f"assetcontent_{i}"] = \
                encode_filedata(asset).decode('ascii')
 
     del params['type']

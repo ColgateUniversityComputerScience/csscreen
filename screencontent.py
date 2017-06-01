@@ -3,6 +3,7 @@
 import sys
 import os
 import os.path
+import shutil
 import tempfile
 from abc import ABCMeta,abstractmethod
 from datetime import datetime
@@ -341,13 +342,30 @@ class HTMLContent(ContentItem):
         super(HTMLContent, self).__init__(name, **kwargs)
         self.__text = htmltext
         self.__hash = _make_hash(htmltext)
+        self.__dir = tempfile.mkdtemp(dir=os.path.join(os.getcwd(), CACHE_DIR))
+        fd, outname = tempfile.mkstemp(suffix='.html', dir=self.__dir)
+        os.close(fd)
+        with open(outname, 'w') as outfile:
+            outfile.write(htmltext)
+
+        for k, v in kwargs.items():
+            if k.startswith('assetname'):
+                name = v
+                base, num = k.split('_')
+                content = kwargs.get("assetcontent_{}".format(num), None)
+                if content is None:
+                    continue
+                content = base64.b64decode(content)
+                outname = os.path.join(self.__dir, name)
+                with open(outname, 'wb') as outfile:
+                    outfile.write(content)
 
     def render(self, webview, width, height):
         self.displayed()
         webview.setHtml(self.__text)
 
     def content_removed(self):
-        pass
+        shutil.rmtree(self.__dir)
 
     def __str__(self):
         return "{} '{}...'".format(ContentItem.__str__(self), self.__text[:20])
