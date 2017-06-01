@@ -291,7 +291,8 @@ class ImageContent(ContentItem):
     def __write_data(self, filename, content):
         base, ext = os.path.splitext(filename)
         outdir = os.path.join(os.getcwd(), CACHE_DIR)
-        outfile, outpath = tempfile.mkstemp(suffix=ext, dir=outdir, text=False)
+        fd, outpath = tempfile.mkstemp(suffix=ext, dir=outdir, text=False)
+        outfile = os.fdopen(fd)
         outfile.write(content)
         outfile.close()
         return outpath
