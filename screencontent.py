@@ -301,9 +301,9 @@ class ImageContent(ContentItem):
         status, output = getstatusoutput("file {}".format(self.__filename))
         mobj = re.search(r"(?P<w>\d+)\s*x\s*(?P<h>\d+)", output)
         if not mobj:
-            return (480, 640) # default dimensions :-(
-        w = mobj.group('w')
-        h = mobj.group('h')
+            return (480, 640)  # default dimensions :-(
+        w = int(mobj.group('w'))
+        h = int(mobj.group('h'))
         return (w, h)
 
     def render(self, webview, width, height):
