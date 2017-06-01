@@ -78,13 +78,15 @@ def construct_add_object(params):
     del params['name']
     check_parm('type', params)
     content['type'] = params['type']
-    if params['type'] not in ['url','image','html']:
-        print ("Type parameter {} is not one of 'url','image', or 'file'".format(params['type']))
+    if params['type'] not in ['url', 'image', 'html']:
+        print(f"Type parameter {params['type']} is not one of "
+              "'url','image', or 'file'")
         sys.exit()
 
     if params['type'] == 'url':
         check_parm('content', params)
-        content['content'] = base64.b64encode(params['content'].encode('ascii')).decode('ascii')
+        content['content'] = \
+          base64.b64encode(params['content'].encode('ascii')).decode('ascii')
         del params['content']
     elif params['type'] == 'image':
         check_parm('content', params)
@@ -96,8 +98,13 @@ def construct_add_object(params):
         check_parm('content', params)
         content['content'] = encode_filedata(params['content']).decode('ascii')
         del params['content']
+        for i, asset in enumerate(params.get('asset')):
+            content[f"asset{i}_name"] = base64.b64encode(asset).decode('ascii')
+            content[f"asset{i}_content"] = \
+               encode_filedata(asset).decode('ascii')
 
     del params['type']
+    params.pop('asset', None)
 
     if 'expire' in params:
         estr = params['expire']
@@ -150,7 +157,7 @@ def add_content(baseurl, password, args):
     # assume that args is a list of strings in the form:
     #   name=x type=url|image|html expire=YYYYMMDDHHMMSS begin=HHMM end=HHMM duration=int
     #   no spaces between argument key/value pairs
-    params = {'except':[], 'only':[]}
+    params = {'except': [], 'only': [], 'asset': []}
     for kvstr in args:
         try:
             args = kvstr.split('=')
@@ -166,7 +173,7 @@ def add_content(baseurl, password, args):
                                # the value may have an embedded = (e.g., for
                                # a URL with query string
 
-        if k == 'except' or k == 'only':
+        if k == 'except' or k == 'only' or k == 'asset':
             params[k].append(v)
         else:
             params[k] = v
@@ -250,6 +257,9 @@ The following are the valid combinations of action and arguments:
 
         Content-specific options:
             * For image content, one additional option is caption=<caption>.
+            * For html content, an addition option is asset=<filename>.  This
+              option can be specified more than once to include multiple
+              assets.
         ''')
     elif action == 'ping':
         ping_screen(baseurl, args.password)

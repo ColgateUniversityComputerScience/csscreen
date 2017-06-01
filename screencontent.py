@@ -3,6 +3,7 @@
 import sys
 import os
 import os.path
+import tempfile
 from abc import ABCMeta,abstractmethod
 from datetime import datetime
 from time import mktime, time, asctime
@@ -13,9 +14,9 @@ import re
 import textwrap
 import hashlib
 import base64
+from subprocess import getstatusoutput
 
 from PyQt4.QtCore import QUrl
-from PIL import Image
 
 assert(sys.version_info.major == 3)
 
@@ -288,16 +289,21 @@ class ImageContent(ContentItem):
 </html>'''
 
     def __write_data(self, filename, content):
-        outpath = os.path.join(os.getcwd(), CACHE_DIR, filename)
-        with open(outpath, 'wb') as outfile:
-            outfile.write(content)
+        base, ext = os.path.splitext(filename)
+        outdir = os.path.join(os.getcwd(), CACHE_DIR)
+        outfile, outpath = tempfile.mkstemp(suffix=ext, dir=outdir, text=False)
+        outfile.write(content)
+        outfile.close()
         return outpath
 
     def __get_img_dimensions(self):
-        im = Image.open(self.__filename)
-        rv = (im.width, im.height)
-        im.close()
-        return rv
+        status, output = getstatusoutput("file {}".format(self.__filename))
+        mobj = re.search(r"(?P<w>\d+)\s*x\s*(?P<h>\d+)", output)
+        if not mobj:
+            return (480, 640) # default dimensions :-(
+        w = mobj.group('w')
+        h = mobj.group('h')
+        return (w, h)
 
     def render(self, webview, width, height):
         self.displayed()
@@ -373,7 +379,7 @@ class ContentQueue(object):
 
     def __len__(self):
         return len(self.__queue)
-        
+
     def add_content(self, content):
         with self.__qlock:
             self.__queue.append(content)
