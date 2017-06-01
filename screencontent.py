@@ -365,7 +365,7 @@ class HTMLContent(ContentItem):
         webview.setHtml(self.__text)
 
     def content_removed(self):
-        shutil.rmtree(self.__dir)
+        shutil.rmtree(self.__dir, ignore_errors=True)
 
     def __str__(self):
         return "{} '{}...'".format(ContentItem.__str__(self), self.__text[:20])
