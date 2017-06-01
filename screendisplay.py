@@ -69,6 +69,7 @@ class Display(QWidget):
     def stop(self):
         self.clock.stop()
         self.close()
+        self.__nocontent.content_removed()
 
     def clock_update(self):
         global running
@@ -138,5 +139,6 @@ if __name__ == '__main__':
     write_pid()
     app.exec_() # block here until we die
     rpcserver.stop()
+    screen.stop()
     content_queue.shutdown()
     remove_pid()

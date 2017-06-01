@@ -334,20 +334,20 @@ class ImageContent(ContentItem):
         xdict['hash'] = self.__hash
         xdict['content'] = str(self.__filename)
         xdict['caption'] = self.__caption
+        xdict['dimensions'] = 'x'.join(map(str, self.__imgdim))
         return xdict
 
 
 class HTMLContent(ContentItem):
     def __init__(self, htmltext, name, **kwargs):
         super(HTMLContent, self).__init__(name, **kwargs)
-        self.__text = htmltext
+        self.__dir, index = self._store_assets(htmltext, **kwargs)
         self.__hash = _make_hash(htmltext)
-        self.__dir = tempfile.mkdtemp(dir=os.path.join(os.getcwd(), CACHE_DIR))
-        fd, outname = tempfile.mkstemp(suffix='.html', dir=self.__dir)
-        os.close(fd)
-        with open(outname, 'w') as outfile:
-            outfile.write(htmltext)
+        self.__page = htmltext
+        self.__url = "file://{}".format(index)
 
+    def _store_assets(self, htmltext, **kwargs):
+        assets = {}
         for k, v in kwargs.items():
             if k.startswith('assetname'):
                 name = v
@@ -355,25 +355,37 @@ class HTMLContent(ContentItem):
                 content = kwargs.get("assetcontent_{}".format(num), None)
                 if content is None:
                     continue
-                content = base64.b64decode(content)
-                outname = os.path.join(self.__dir, name)
-                with open(outname, 'wb') as outfile:
-                    outfile.write(content)
+                assets[name] = base64.b64decode(content)
+
+        self.__assetnames = list(assets.keys())
+
+        xdir = tempfile.mkdtemp(dir=os.path.join(os.getcwd(), CACHE_DIR))
+        fd, indexpath = tempfile.mkstemp(suffix='.html', dir=xdir)
+        os.close(fd)
+        with open(indexpath, 'w') as outfile:
+            outfile.write(htmltext)
+
+        for name, content in assets.items():
+            outname = os.path.join(xdir, name)
+            with open(outname, 'wb') as outfile:
+                outfile.write(content)
+        return xdir, indexpath
 
     def render(self, webview, width, height):
         self.displayed()
-        webview.setHtml(self.__text)
+        webview.load(QUrl(self.__url))
 
     def content_removed(self):
         shutil.rmtree(self.__dir, ignore_errors=True)
 
     def __str__(self):
-        return "{} '{}...'".format(ContentItem.__str__(self), self.__text[:20])
+        return "{} '{}...'".format(ContentItem.__str__(self), self.__page[:20])
 
     def to_dict(self):
         xdict = ContentItem.to_dict(self)
         xdict['hash'] = self.__hash
-        xdict['content'] = str(self.__text)
+        xdict['content'] = str(self.__page)
+        xdict['assets'] = ','.join(self.__assetnames)
         return xdict
 
 
