@@ -292,9 +292,9 @@ class ImageContent(ContentItem):
         base, ext = os.path.splitext(filename)
         outdir = os.path.join(os.getcwd(), CACHE_DIR)
         fd, outpath = tempfile.mkstemp(suffix=ext, dir=outdir, text=False)
-        outfile = os.fdopen(fd)
-        outfile.write(content)
-        outfile.close()
+        os.close(fd)
+        with open(outpath, 'wb') as outfile:
+            outfile.write(content)
         return outpath
 
     def __get_img_dimensions(self):
