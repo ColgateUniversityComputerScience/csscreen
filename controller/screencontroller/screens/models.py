@@ -40,6 +40,9 @@ class Screen(models.Model):
             s.ping()
         return screens
 
+    def group_list(self):
+        return [ g.groupname for g in self.groups.all() ]
+
     def _remote_call(self, xtype, command):
         xpass = "?password={}".format(self.password)
         if xtype == 'get':
