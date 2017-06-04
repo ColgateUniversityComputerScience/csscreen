@@ -7,18 +7,6 @@ class ScreenNotAccessible(Exception):
     pass
 
 
-class ScreenGroup(models.Model):
-    """Represents an arbitrary group of screens."""
-
-    groupname = models.CharField(max_length=100)
-
-    class Meta:
-        ordering = ('groupname',)
-
-    def __str__(self):
-        return self.groupname
-
-
 class Screen(models.Model):
     """Represents a deployed screen."""
 
@@ -28,20 +16,16 @@ class Screen(models.Model):
     password = models.CharField(max_length=100)
     lastfetch = models.DateTimeField(null=True, blank=True, editable=False)
     lastupdate = models.DateTimeField(auto_now=True, editable=False)
-    groups = models.ManyToManyField(ScreenGroup, blank=True)
 
     class Meta:
         ordering = ('name',)
 
     @staticmethod
     def get_all_and_ping():
-        screens = Screen.objects.all().prefetch_related('groups')
+        screens = Screen.objects.all()
         for s in screens:
             s.ping()
         return screens
-
-    def group_list(self):
-        return [ g.groupname for g in self.groups.all() ]
 
     def _remote_call(self, xtype, command):
         xpass = "?password={}".format(self.password)

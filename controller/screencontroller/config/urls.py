@@ -15,22 +15,26 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
-from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from screens.views import ScreenList, ScreenDetail, ScreenCreate, \
-    ScreenUpdate, ScreenDelete, ScreenGroupCreate, ScreenGroupList, \
-    ScreenGroupDelete
+    ScreenUpdate, ScreenDelete, ScreenContentUpdate
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^accounts/', include('django.contrib.auth.urls')),
     url(r'^$', login_required(ScreenList.as_view()), name='screen-list'),
-    url(r'^screen/(?P<pk>\d+)/$', login_required(ScreenDetail.as_view()),
+    url(r'^screen/(?P<pk>\d+)/$',
+        login_required(ScreenDetail.as_view()),
         name='screen-detail'),
-    url(r'^screen/create/$', login_required(ScreenCreate.as_view()), name='screen-create'),
-    url(r'^screen/(?P<pk>[0-9]+)/update/$', login_required(ScreenUpdate.as_view()), name='screen-update'),
-    url(r'^screen/(?P<pk>[0-9]+)/delete/$', login_required(ScreenDelete.as_view()), name='screen-delete'),
-    url(r'^screengroup/create/$', login_required(ScreenGroupCreate.as_view()), name='group-create'),
-    url(r'^screengroup/$', login_required(ScreenGroupList.as_view()), name='screengroup-list'),
-    url(r'^screengroup/(?P<pk>\d+)/delete/$', login_required(ScreenGroupDelete.as_view()), name='screengroup-delete')
+    url(r'^screen/create/$',
+        login_required(ScreenCreate.as_view()),
+        name='screen-create'),
+    url(r'^screen/(?P<pk>[0-9]+)/update/$',
+        login_required(ScreenUpdate.as_view()),
+        name='screen-update'),
+    url(r'^screen/(?P<pk>[0-9]+)/delete/$',
+        login_required(ScreenDelete.as_view()),
+        name='screen-delete'),
+    url(r'^screen/content/$', login_required(ScreenContentUpdate.as_view()),
+        name='screencontent-update'),
 ]

@@ -2,7 +2,7 @@ from unittest.mock import Mock
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User
-from .models import Screen, ScreenGroup, ScreenNotAccessible
+from .models import Screen, ScreenNotAccessible
 
 
 class ScreenTests(TestCase):
@@ -50,15 +50,16 @@ class ScreenTests(TestCase):
                 'content': []
             })
             with self.assertRaises(ScreenNotAccessible):
-                r = self.s.fetch_current()
+                self.s.fetch_current()
 
         def test_index(self):
             c = Client()
             # not logged in; should redirect to login
-            response = c.get(reverse('index'), follow=True)
+            response = c.get(reverse('screen-list'), follow=True)
             self.assertRedirects(response, reverse('login')+'?next=/')
             self.assertTemplateUsed(response, 'registration/login.html')
             c.login(username='js', password='test')
-            response = c.get(reverse('index'))
-            self.assertTemplateUsed(response, 'screens/index.html')
-            self.assertQuerysetEqual(response.context['screens'], [repr(self.s)])
+            response = c.get(reverse('screen-list'))
+            self.assertTemplateUsed(response, 'screens/screen_list.html')
+            self.assertQuerysetEqual(response.context['screens'],
+                                     [repr(self.s)])
