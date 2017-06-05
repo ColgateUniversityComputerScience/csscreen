@@ -41,16 +41,16 @@ class ScreenContentUpdate(View):
 
     def get(self, request):
         if 'screen' not in request.GET:
-            messages.error(request, "No screens selected.")
+            messages.info(request, "No screens selected.")
             return HttpResponseRedirect(reverse('screen-list'))
         screenlist = ','.join(request.GET['screen'])
         if 'action' not in request.GET:
-            messages.error(request, "No content action specified.")
+            messages.warning(request, "No content action specified.")
             return HttpResponseRedirect(reverse('screen-list'))
 
         formcls = self._clsmap.get(request.GET['action'], None)
         if formcls is None:
-            messages.error(request, "Bad content action.")
+            messages.warning(request, "Bad content action.")
             return HttpResponseRedirect(reverse('screen-list'))
 
         print(request.GET)
@@ -70,17 +70,19 @@ class ScreenContentUpdate(View):
         print(request.POST)
         print(request.FILES)
         if 'action' not in request.POST:
-            messages.error(request, "No content action specified.")
+            messages.warning(request, "No content action specified.")
             return HttpResponseRedirect(reverse('screen-list'))
         formcls = self._clsmap.get(request.POST['action'], None)
         if formcls is None:
-            messages.error(request, "Bad content action.")
+            messages.warning(request, "Bad content action.")
             return HttpResponseRedirect(reverse('screen-list'))
 
         form = formcls(request.POST, request.FILES)
         if form.is_valid():
             messages.success(request, "Content successfully updated.")
+            # FIXME: actually do the update!
             print(form.cleaned_data)
+
             return HttpResponseRedirect(reverse('screen-list'))
         else:
             messages.warning(request, "Invalid form content.")

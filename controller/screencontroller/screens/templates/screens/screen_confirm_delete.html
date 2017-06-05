@@ -9,6 +9,7 @@ Screen delete confirmation
 <form action="" method="post">{% csrf_token %}
 <p>Are you sure you want to delete the screen "{{ object }}"?</p>
 <input type="submit" value="Confirm" />
+<a href="{% url 'screen-list' %}">Cancel</a>
 </form>
 </div>
 {% endblock %}
