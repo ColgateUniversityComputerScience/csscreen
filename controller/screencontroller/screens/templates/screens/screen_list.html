@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}
+Manage screens
+{% endblock %}
+
+{% block content %}
+<ul>
+<form action="{% url 'screencontent-update' %}" method="get">
+    {% for screen in screens %}
+        <li><input id="{{screen.id}}" value="{{screen.id}}" type="checkbox" name="screen">
+        <a href="{% url 'screen-detail' screen.pk %}">{{ screen.name }}</a>
+        {{screen.ipaddress}}
+        {% if screen.isup %}
+        Last update: {{screen.lastfetch|naturaltime}}
+        Last contact: {{screen.pingtime|naturaltime}}
+        {% else %}
+        Not currently accessible
+        {% if screen.pingtime %}
+        (last try: {{screen.pingtime|naturaltime}})
+        {% endif %}
+        {% endif %}
+        <a href="{% url 'screen-update' screen.pk %}">Modify screen config</a>
+        <a href="{% url 'screen-delete' screen.pk %}">Remove screen</a>
+    {% endfor %}
+    <br>
+    <br>
+    <button type="submit" name="action" value="html">Add HTML content</button>
+    <button type="submit" name="action" value="image">Add Image content</button>
+    <button type="submit" name="action" value="url">Add URL content</button>
+</form>
+    <li><a href="{%url 'screen-create'%}">Add a screen</a>
+</ul>
+{% endblock %}

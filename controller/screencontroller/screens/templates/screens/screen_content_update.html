@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}
+Screen content update...
+{% endblock %}
+
+{% block content %}
+<div>
+<form action="" method="post"> {% csrf_token %}
+{{ form.as_ul }}
+<input type="hidden" name="screen" value="{{screen}}">
+<input type="hidden" name="action" value="{{action}}">
+<input type="submit" value="Add content" />
+</form>
+</div>
+{% endblock %}
