@@ -1,13 +1,12 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.views import View
-from django.views.generic import ListView, DetailView, FormView
+from django.views.generic import ListView, DetailView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from .models import Screen
 from .forms import HTMLContentForm, ImageContentForm, URLContentForm
-
 
 class ScreenList(ListView):
     model = Screen
@@ -66,11 +65,11 @@ class ScreenContentUpdate(View):
                       context=context)
 
     def post(self, request):
-        print(request.path)
-        print(request.POST)
-        print(request.FILES)
         if 'action' not in request.POST:
             messages.warning(request, "No content action specified.")
+            return HttpResponseRedirect(reverse('screen-list'))
+        if 'screen' not in request.POST:
+            messages.warning(request, "No screens specified for update.")
             return HttpResponseRedirect(reverse('screen-list'))
         formcls = self._clsmap.get(request.POST['action'], None)
         if formcls is None:
@@ -79,10 +78,17 @@ class ScreenContentUpdate(View):
 
         form = formcls(request.POST, request.FILES)
         if form.is_valid():
-            messages.success(request, "Content successfully updated.")
-            # FIXME: actually do the update!
-            print(form.cleaned_data)
-
+            mlist = []
+            for sid in request.POST['screen']:
+                s = Screen.objects.get(pk=sid)
+                success, mesg = s.add_content(request.POST['action'],
+                                              form.cleaned_data)
+                if success:
+                    smsg = f"Screen {s.name} update successful: {mesg}"
+                else:
+                    smsg = f"Screen {s.name} update failed: {mesg}"
+                mlist.append(smsg)
+            messages.info(request, ", ".join(mlist))
             return HttpResponseRedirect(reverse('screen-list'))
         else:
             messages.warning(request, "Invalid form content.")

@@ -76,5 +76,8 @@ class Screen(models.Model):
     def pingtime(self):
         return getattr(self, "_last_ping", None)
 
+    def add_content(self, xtype, formdata):
+        return True, "success"
+
     def __str__(self):
         return f"{self.name} @{self.ipaddress}"

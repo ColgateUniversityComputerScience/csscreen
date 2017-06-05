@@ -79,6 +79,9 @@ class ScreenTests(TestCase):
             # success results in 302 redirect to /
             self.assertEqual(response.status_code, 302)
             self.assertEqual(response.url, reverse('screen-list'))
+            self.assertIn("Screen test update successful",
+                          c.cookies['messages'].value)
+            #print(c.cookies['messages'])
 
             # bad form content results in 200 and
             # screens/screen_content_update.html being rendered
