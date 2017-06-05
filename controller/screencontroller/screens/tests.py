@@ -63,3 +63,22 @@ class ScreenTests(TestCase):
             self.assertTemplateUsed(response, 'screens/screen_list.html')
             self.assertQuerysetEqual(response.context['screens'],
                                      [repr(self.s)])
+
+        def test_upload_content(self):
+            c = Client()
+            c.login(username='js', password='test')
+            postcontent = {'content_name': 'blah',
+                           'duration': 10,
+                           'xexcept': 'M:0000-0100,T:0100-0200,W:0200-0300',
+                           'xonly': '',
+                           'expire': '',
+                           'url': 'http://cs.colgate.edu',
+                           'screen': '1',
+                           'action': 'url'}
+            response = c.post(reverse('screencontent-update'), postcontent)
+            # success results in 302 redirect to /
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.url, reverse('screen-list'))
+
+            # bad form content results in 200 and
+            # screens/screen_content_update.html being rendered

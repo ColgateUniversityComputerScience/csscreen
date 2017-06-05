@@ -70,5 +70,11 @@ class Screen(models.Model):
             pass
         return self._ping_up
 
+    def isup(self):
+        return getattr(self, "_ping_up", False)
+
+    def pingtime(self):
+        return getattr(self, "_last_ping", None)
+
     def __str__(self):
         return f"{self.name} @{self.ipaddress}"

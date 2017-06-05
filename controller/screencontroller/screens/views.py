@@ -22,13 +22,13 @@ class ScreenDetail(DetailView):
 
 class ScreenCreate(CreateView):
     model = Screen
-    fields = ['name', 'ipaddress', 'password', 'groups']
+    fields = ['name', 'ipaddress', 'password']
     success_url = reverse_lazy('screen-list')
 
 
 class ScreenUpdate(UpdateView):
     model = Screen
-    fields = ['name', 'ipaddress', 'password', 'groups']
+    fields = ['name', 'ipaddress', 'password']
     success_url = reverse_lazy('screen-list')
 
 
@@ -72,7 +72,7 @@ class ScreenContentUpdate(View):
         if 'action' not in request.POST:
             messages.error(request, "No content action specified.")
             return HttpResponseRedirect(reverse('screen-list'))
-        formcls = self._clsmap.get(request.GET['action'], None)
+        formcls = self._clsmap.get(request.POST['action'], None)
         if formcls is None:
             messages.error(request, "Bad content action.")
             return HttpResponseRedirect(reverse('screen-list'))

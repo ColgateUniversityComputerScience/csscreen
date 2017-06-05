@@ -27,12 +27,12 @@ class ContentBaseForm(forms.Form):
     xexcept = forms.CharField(label='Do not show on these days and times',
                               required=False,
                               validators=[only_except_validator],
-                              help_text='Format: MTWRF:HH:MM-HH-MM or '
+                              help_text='Format: MTWRF:HH:MM-HH:MM or '
                                         ' MTWRF:HHMM:HHMM.')
     xonly = forms.CharField(label='Show only on these days and times',
                             required=False,
                             validators=[only_except_validator],
-                            help_text='Format: MTWRF:HH:MM-HH-MM or '
+                            help_text='Format: MTWRF:HH:MM-HH:MM or '
                                       ' MTWRF:HHMM:HHMM.')
     expire = forms.DateTimeField(required=False,
                                  label='Expiration date/time',
