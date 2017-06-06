@@ -49,11 +49,13 @@ class ContentBaseForm(forms.Form):
 class HTMLContentForm(ContentBaseForm):
     content_file = forms.FileField(label='HTML file', required=True,
                                    help_text='The page to display.  It may '
-                                   'refer to additional assets in relative '
-                                   'paths --- just upload those as html '
-                                   'assets.')
+                                   'refer to additional assets relative to '
+                                   'the current directory --- just upload '
+                                   'those as html assets.')
     html_assets = forms.FileField(label='HTML assets',
                                   required=False,
+                                  help_text='Any additional assets to render '
+                                  'in the page.',
                                   widget=forms.ClearableFileInput(
                                         attrs={'multiple': True}))
 

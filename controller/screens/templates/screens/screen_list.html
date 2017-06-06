@@ -9,30 +9,32 @@ Manage screens
 <div class="container">
     <div class="row">
         <div class="lead mx-5 my-3">
-                Screens and status
+            Screens and status
         </div>
     </div>
 <form action="{% url 'screencontent-update' %}" method="get">
     {% for screen in screens %}
-    <div class="form-group">
-        <div class="form-check">
-            <label class="form-check-label">
-                <input class="form-check-input" id="{{screen.id}}" value="{{screen.id}}" type="checkbox" name="screen">
-                <a href="{% url 'screen-detail' screen.pk %}">{{ screen.name }}</a> @
+    <div class="row bg-faded mb-1">
+        <div class="offset-sm-1 col-sm-3">
+            <input class="form-check-input" id="{{screen.id}}" value="{{screen.id}}" type="checkbox" name="screen">
+            <a href="{% url 'screen-detail' screen.pk %}">{{ screen.name }}</a> @
                 {{screen.ipaddress}}
-                {% if screen.ping %}
-                <p>Last update: <span class="">{{screen.lastfetch|naturaltime}}</span>,
-                last contact: <span class="">{{screen.pingtime|naturaltime}}</span>
-                {% else %}
-                <p class="">Not currently accessible
-                {% if screen.pingtime %}
-                <span class="">(last try: {{screen.pingtime|naturaltime}})</span>
-                {% endif %}
-                {% endif %}
-            </label>
         </div>
-        <div class="form-check">
+        <div class="col-sm-3">
+            {% if screen.ping %}
+                <span class="text-success">Last update: {{screen.lastfetch|naturaltime}},
+                last contact: {{screen.pingtime|naturaltime}}</span>
+            {% else %}
+                <span class="text-warning">Not currently accessible
+                {% if screen.pingtime %}
+                    (last try: {{screen.pingtime|naturaltime}})</span>
+                {% endif %}
+            {% endif %}
+        </div>
+        <div class="col-sm-2">
             <a class="btn btn-sm btn-outline-info" href="{% url 'screen-update' screen.pk %}">Modify screen config</a>
+        </div>
+        <div class="col-sm-2">
             <a class="btn btn-sm btn-outline-info" href="{% url 'screen-delete' screen.pk %}">Remove screen</a>
         </div>
     </div>
@@ -42,11 +44,13 @@ Manage screens
     </div>
     {% endfor %}
     <div class="form-group">
+        <p>Check one or more screens above to add content to those screens</p>
         <button class="btn btn-outline-primary" type="submit" name="action" value="html">Add HTML content</button>
         <button class="btn btn-outline-primary" type="submit" name="action" value="image">Add Image content</button>
         <button class="btn btn-outline-primary" type="submit" name="action" value="url">Add URL content</button>
-        <a class="btn btn-outline-primary" href="{%url 'screen-create'%}">Add a screen</a>
     </div>
+    <br>
+    <a class="btn btn-outline-primary" href="{%url 'screen-create'%}">Add a screen</a>
 </form>
 </div>
 {% endblock %}

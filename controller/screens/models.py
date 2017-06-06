@@ -16,8 +16,11 @@ class Screen(models.Model):
     """Represents a deployed screen."""
 
     STALE_WINDOW = 180
-    name = models.CharField(max_length=100)
-    ipaddress = models.GenericIPAddressField()
+    name = models.CharField(
+        max_length=100,
+        help_text="A unique name for the screen")
+    ipaddress = models.GenericIPAddressField(
+        verbose_name="IP address")
     port = models.SmallIntegerField(default=4443)
     password = models.CharField(max_length=100)
     lastfetch = models.DateTimeField(null=True, blank=True, editable=False)
@@ -29,9 +32,9 @@ class Screen(models.Model):
     @staticmethod
     def get_all_and_ping():
         screens = Screen.objects.all()
-        print("In get all and ping {}".format(screens))
+        # print("In get all and ping {}".format(screens))
         for s in screens:
-            print("Pinging {}".format(s))
+            # print("Pinging {}".format(s))
             s.ping()
         return screens
 
@@ -49,9 +52,9 @@ class Screen(models.Model):
         elif xtype == 'add':
             xurl = f"{starturl}/display{xpass}"
             xtype, formdata = command
-            print(f"Add: {xurl} {xtype}")
+            # print(f"Add: {xurl} {xtype}")
             xdata = self._construct_add_object(xtype, formdata)
-            print(xdata)
+            # print(xdata)
             response = requests.post(xurl, verify=False, data=xdata)
         if response.status_code != 200:
             raise \
@@ -137,7 +140,7 @@ class Screen(models.Model):
             content['content'] = \
                 base64.b64encode(urlc.encode('utf8')).decode('utf8')
         elif xtype == 'image':
-            print(formdata)
+            # print(formdata)
             inmemfile = formdata.pop('content_file')
             if not inmemfile.content_type.startswith('image'):
                 raise ValidationError(_('Not an image file type.'))
@@ -148,7 +151,7 @@ class Screen(models.Model):
             if caption is not None:
                 content['caption'] = caption
         elif xtype == 'html':
-            print(formdata)
+            # print(formdata)
             inmemfile = formdata.pop('content_file')
             if not inmemfile.content_type.startswith('text/html'):
                 raise ValidationError(_('Not an HTML file type.'))

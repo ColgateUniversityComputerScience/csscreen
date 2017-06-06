@@ -110,6 +110,16 @@ Screen detail
 </div>
 {% endfor %}
 </div>
+
+<div class="form-group">
+    <a href="{% url 'screencontent-update' %}?screen={{screen.id}}&action=html"
+       class="btn btn-outline-primary">Add HTML content</a>
+    <a href="{% url 'screencontent-update' %}?screen={{screen.id}}&action=image"
+       class="btn btn-outline-primary">Add Image content</a>
+    <a href="{% url 'screencontent-update' %}?screen={{screen.id}}&action=url"
+       class="btn btn-outline-primary">Add URL content</a>
+</div>
+
 <a class="btn btn-sm btn-outline-primary"
    href={% url 'screen-list' %}>Back to screen list</a>
 </div>

@@ -51,7 +51,8 @@ class ScreenContentUpdate(View):
         if 'screen' not in request.GET:
             messages.info(request, "No screens selected.")
             return HttpResponseRedirect(reverse('screen-list'))
-        screenlist = ','.join(request.GET['screen'])
+        screenlist = ','.join(request.GET.getlist('screen'))
+
         if 'action' not in request.GET:
             messages.warning(request, "No content action specified.")
             return HttpResponseRedirect(reverse('screen-list'))
@@ -61,13 +62,16 @@ class ScreenContentUpdate(View):
             messages.warning(request, "Bad content action.")
             return HttpResponseRedirect(reverse('screen-list'))
 
-        print(request.GET)
+        screennamelist = []
+        for sid in request.GET.getlist('screen'):
+            screennamelist.append(Screen.objects.get(pk=int(sid)).name)
+
         form = formcls(initial={'content_type': request.GET['action']})
-        print("Rendering cls {}".format(formcls))
         form.content_type = request.GET['action']
 
         context = {'form': form,
                    'screen': screenlist,
+                   'screennames': screennamelist,
                    'action': request.GET['action']}
         return render(request,
                       "screens/screen_content_update.html",
