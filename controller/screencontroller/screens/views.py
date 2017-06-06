@@ -132,9 +132,9 @@ class ScreenContentDelete(DetailView):
         try:
             response = obj.delete_content(name)
             if response['status'] == 'success':
-                messages.success(request, f"response['reason']")
+                messages.success(request, response['reason'].capitalize())
             else:
-                messages.warning(request, f"response['reason']")
+                messages.warning(request, response['reason'].capitalize())
         except Exception as e:
             messages.warning(request, f"Content not deleted: {e}")
         return HttpResponseRedirect(reverse('screen-detail',
