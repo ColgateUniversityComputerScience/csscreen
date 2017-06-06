@@ -1,5 +1,5 @@
-from django.shortcuts import render
-from django.http import HttpResponseRedirect
+from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponseRedirect, Http404
 from django.views import View
 from django.views.generic import ListView, DetailView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
@@ -8,15 +8,23 @@ from django.contrib import messages
 from .models import Screen
 from .forms import HTMLContentForm, ImageContentForm, URLContentForm
 
+
 class ScreenList(ListView):
     model = Screen
     context_object_name = 'screens'
-    queryset = Screen.get_all_and_ping()
 
 
 class ScreenDetail(DetailView):
     model = Screen
     context_object_name = 'screen'
+
+    def get_object(self, queryset=None):
+        obj = super(ScreenDetail, self).get_object(queryset)
+        try:
+            obj.fetch_current()
+        except:
+            pass
+        return obj
 
 
 class ScreenCreate(CreateView):
@@ -89,7 +97,7 @@ class ScreenContentUpdate(View):
                     smsg = f"Screen {s.name} update failed: {mesg}"
                 mlist.append(smsg)
             messages.info(request, ", ".join(mlist))
-            return HttpResponseRedirect(reverse('screen-list'))
+            return HttpResponseRedirect(reverse('screen-detail', args=[s.id]))
         else:
             messages.warning(request, "Invalid form content.")
             context = {'form': form,
@@ -103,3 +111,23 @@ class ScreenContentUpdate(View):
 class ScreenDelete(DeleteView):
     model = Screen
     success_url = reverse_lazy('screen-list')
+
+
+class ScreenContentDelete(DetailView):
+    model = Screen
+
+    def get(self, request, *args, **kwargs):
+        pk = kwargs.get('pk', None)
+        if pk is None:
+            raise Http404("Screen does not exist")
+        obj = Screen.objects.get(pk=pk)
+        name = kwargs.get('name', None)
+        if name is None:
+            raise Http404("Content name not found in request")
+        try:
+            response = obj.delete_content(name)
+            messages.success(request, f"no exception: {response}")
+        except Exception as e:
+            messages.warning(request, f"Content not deleted: {e}")
+        return HttpResponseRedirect(reverse('screen-detail',
+                                            args=[obj.id]))

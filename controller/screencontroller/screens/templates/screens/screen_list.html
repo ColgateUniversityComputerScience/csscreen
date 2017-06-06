@@ -12,7 +12,7 @@ Manage screens
         <li><input id="{{screen.id}}" value="{{screen.id}}" type="checkbox" name="screen">
         <a href="{% url 'screen-detail' screen.pk %}">{{ screen.name }}</a>
         {{screen.ipaddress}}
-        {% if screen.isup %}
+        {% if screen.ping %}
         Last update: {{screen.lastfetch|naturaltime}}
         Last contact: {{screen.pingtime|naturaltime}}
         {% else %}
@@ -21,8 +21,8 @@ Manage screens
         (last try: {{screen.pingtime|naturaltime}})
         {% endif %}
         {% endif %}
-        <a href="{% url 'screen-update' screen.pk %}">Modify screen config</a>
-        <a href="{% url 'screen-delete' screen.pk %}">Remove screen</a>
+        <a class="btn" href="{% url 'screen-update' screen.pk %}">Modify screen config</a>
+        <a class="btn" href="{% url 'screen-delete' screen.pk %}">Remove screen</a>
     {% endfor %}
     <br>
     <br>

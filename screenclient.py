@@ -7,6 +7,7 @@ import re
 from datetime import datetime
 import textwrap
 import requests
+requests.packages.urllib3.disable_warnings()
 
 
 def make_base_url(host='localhost', port=4443):

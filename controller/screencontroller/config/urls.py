@@ -17,13 +17,13 @@ from django.conf.urls import url, include
 from django.contrib import admin
 from django.contrib.auth.decorators import login_required
 from screens.views import ScreenList, ScreenDetail, ScreenCreate, \
-    ScreenUpdate, ScreenDelete, ScreenContentUpdate
+    ScreenUpdate, ScreenDelete, ScreenContentUpdate, ScreenContentDelete
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^accounts/', include('django.contrib.auth.urls')),
     url(r'^$', login_required(ScreenList.as_view()), name='screen-list'),
-    url(r'^screen/(?P<pk>\d+)/$',
+    url(r'^screen/(?P<pk>[0-9]+)/$',
         login_required(ScreenDetail.as_view()),
         name='screen-detail'),
     url(r'^screen/create/$',
@@ -35,6 +35,10 @@ urlpatterns = [
     url(r'^screen/(?P<pk>[0-9]+)/delete/$',
         login_required(ScreenDelete.as_view()),
         name='screen-delete'),
-    url(r'^screen/content/$', login_required(ScreenContentUpdate.as_view()),
+    url(r'^screen/content/update/$',
+        login_required(ScreenContentUpdate.as_view()),
         name='screencontent-update'),
+    url(r'^screen/(?P<pk>[0-9]+)/delete/(?P<name>[a-zA-Z0-9_-]+)/$',
+        login_required(ScreenContentDelete.as_view()),
+        name='screencontent-delete'),
 ]

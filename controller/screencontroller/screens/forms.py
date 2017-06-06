@@ -1,6 +1,7 @@
 import re
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from .models import Screen
 
 
@@ -18,22 +19,27 @@ def only_except_validator(val):
 
 
 class ContentBaseForm(forms.Form):
-    content_name = forms.CharField(min_length=1, max_length=50,
-                                   label='Name',
-                                   help_text='A unique (per screen) name to '
-                                   'give the content.')
-    duration = forms.IntegerField(min_value=1, max_value=60, initial=10,
-                                  label='Display duration (seconds)')
-    xexcept = forms.CharField(label='Do not show on these days and times',
-                              required=False,
-                              validators=[only_except_validator],
-                              help_text='Format: MTWRF:HH:MM-HH:MM or '
-                                        ' MTWRF:HHMM:HHMM.')
-    xonly = forms.CharField(label='Show only on these days and times',
-                            required=False,
-                            validators=[only_except_validator],
-                            help_text='Format: MTWRF:HH:MM-HH:MM or '
-                                      ' MTWRF:HHMM:HHMM.')
+    content_name = forms.CharField(
+                    min_length=1, max_length=50,
+                    label='Name',
+                    help_text='A unique (per screen) name to '
+                    'give the content.',
+                    validators=[RegexValidator(regex=r'^([a-zA-Z0-9_-]+)$')])
+    duration = forms.IntegerField(
+                    min_value=1, max_value=60, initial=10,
+                    label='Display duration (seconds)')
+    xexcept = forms.CharField(
+                    label='Do not show on these days and times',
+                    required=False,
+                    validators=[only_except_validator],
+                    help_text='Format: MTWRF:HH:MM-HH:MM or '
+                              ' MTWRF:HHMM:HHMM.')
+    xonly = forms.CharField(
+                    label='Show only on these days and times',
+                    required=False,
+                    validators=[only_except_validator],
+                    help_text='Format: MTWRF:HH:MM-HH:MM or '
+                              ' MTWRF:HHMM:HHMM.')
     expire = forms.DateTimeField(required=False,
                                  label='Expiration date/time',
                                  help_text='Format: YYYY-MM-DD HH:MM:SS.  '
