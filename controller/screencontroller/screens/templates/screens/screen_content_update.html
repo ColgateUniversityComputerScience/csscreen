@@ -6,7 +6,10 @@ Screen content update...
 
 {% block content %}
 <div>
-<form action="" method="post"> {% csrf_token %}
+<form action="{% url 'screencontent-update' %}"
+      enctype="multipart/form-data"
+      method="post">
+{% csrf_token %}
 {{ form.as_ul }}
 <input type="hidden" name="screen" value="{{screen}}">
 <input type="hidden" name="action" value="{{action}}">

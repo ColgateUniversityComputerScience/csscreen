@@ -3,6 +3,7 @@ from django.http import HttpResponseRedirect, Http404
 from django.views import View
 from django.views.generic import ListView, DetailView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from django.core.exceptions import ValidationError
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from .models import Screen
@@ -86,18 +87,27 @@ class ScreenContentUpdate(View):
 
         form = formcls(request.POST, request.FILES)
         if form.is_valid():
+            if 'html_assets' in request.FILES:
+                html_assets = request.FILES.getlist('html_assets')
+                form.cleaned_data['html_assets'] = html_assets
+
             faillist = []
             successlist = []
             for sid in request.POST['screen']:
                 s = Screen.objects.get(pk=sid)
-                success, mesg = s.add_content(request.POST['action'],
-                                              form.cleaned_data)
-                if success:
-                    smsg = f"Screen {s.name} update successful: {mesg}"
-                    successlist.append(smsg)
-                else:
-                    smsg = f"Screen {s.name} update failed: {mesg}"
+                try:
+                    success, mesg = s.add_content(request.POST['action'],
+                                                  form.cleaned_data)
+                except ValidationError as ve:
+                    smsg = f"Screen {s.name} update failed: {ve}"
                     faillist.append(smsg)
+                else:
+                    if success:
+                        smsg = f"Screen {s.name} update successful: {mesg}"
+                        successlist.append(smsg)
+                    else:
+                        smsg = f"Screen {s.name} update failed: {mesg}"
+                        faillist.append(smsg)
             if faillist:
                 messages.warning(request, ", ".join(faillist))
             if successlist:

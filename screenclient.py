@@ -58,7 +58,6 @@ def get_content(baseurl, password, name):
 
 def delete_content(baseurl, password, name):
     xurl = "{}/display/{}?password={}".format(baseurl, name, password)
-    print(xurl)
     response = requests.delete(xurl, verify=False)
     print_response(response.json())
 
@@ -183,9 +182,7 @@ def add_content(baseurl, password, args):
     content = construct_add_object(params)
     xdata = json.dumps(content)
     xurl = "{}/display?password={}".format(baseurl, password)
-    print(xurl, xdata)
     response = requests.post(xurl, verify=False, data=xdata)
-    print(response.json())
     print_response(response.json())
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@ import json
 from django.db import models
 import django.utils.timezone as tz
 from django.core.exceptions import ValidationError
+from django.utils.translation import ugettext as _
 import requests
 requests.packages.urllib3.disable_warnings()
 
@@ -47,7 +48,7 @@ class Screen(models.Model):
             response = requests.delete(xurl, verify=False, timeout=1.0)
         elif xtype == 'add':
             xurl = f"{starturl}/display{xpass}"
-            xtype,formdata = command
+            xtype, formdata = command
             print(f"Add: {xurl} {xtype}")
             xdata = self._construct_add_object(xtype, formdata)
             print(xdata)
@@ -107,7 +108,6 @@ class Screen(models.Model):
 
     def add_content(self, xtype, formdata):
         response = self._remote_call('add', (xtype, formdata))
-        print(response)
         return response['status'] == 'success', response['reason']
 
     def delete_content(self, xname):
@@ -127,7 +127,6 @@ class Screen(models.Model):
         if name is None:
             raise ValidationError(_('Missing content name'), code='invalid')
 
-#            {'content_name': 'test', 'duration': 10, 'xexcept': '', 'xonly': '', 'expire': None, 'url': 'http://cs.colgate.edu'}
         content['name'] = name
         content['type'] = xtype
 
@@ -135,27 +134,32 @@ class Screen(models.Model):
             urlc = formdata.pop('url', None)
             if urlc is None:
                 raise ValidationError(_('Missing URL'), code='invalid')
-            content['content'] = base64.b64encode(urlc.encode('utf8')).decode('utf8')
+            content['content'] = \
+                base64.b64encode(urlc.encode('utf8')).decode('utf8')
         elif xtype == 'image':
-            raise ValidationError(_('Image form handling not implemented yet'))
-            pass
-            # check_parm('content', params)
-            # content['content'] = encode_filedata(params['content']).decode('ascii')
-            # content['filename'] = os.path.basename(params['content'])
-            # content['caption'] = params.pop('caption', '')
-            # del params['content']
+            print(formdata)
+            inmemfile = formdata.pop('content_file')
+            if not inmemfile.content_type.startswith('image'):
+                raise ValidationError(_('Not an image file type.'))
+            content['content'] = \
+                base64.b64encode(inmemfile.read()).decode('utf8')
+            content['filename'] = inmemfile.name
+            caption = formdata.pop('image_caption', None)
+            if caption is not None:
+                content['caption'] = caption
         elif xtype == 'html':
-            raise ValidationError(_('HTML form handling not implemented yet'))
-            pass
-            # check_parm('content', params)
-            # content['content'] = encode_filedata(params['content']).decode('ascii')
-            # del params['content']
-            # for i, asset in enumerate(params.get('asset')):
-            #     content[f"assetname_{i}"] = asset
-            #     content[f"assetcontent_{i}"] = \
-            #        encode_filedata(asset).decode('ascii')
+            print(formdata)
+            inmemfile = formdata.pop('content_file')
+            if not inmemfile.content_type.startswith('text/html'):
+                raise ValidationError(_('Not an HTML file type.'))
+            content['content'] = \
+                base64.b64encode(inmemfile.read()).decode('utf8')
+            content['filename'] = inmemfile.name
 
-            # params.pop('asset', None)
+            for i, inmemfile in enumerate(formdata.pop('html_assets', [])):
+                xfiledata = base64.b64encode(inmemfile.read()).decode('utf8')
+                content[f"assetname_{i}"] = inmemfile.name
+                content[f"assetcontent_{i}"] = xfiledata
 
         timespec = formdata.pop('expire', None)
         if timespec is not None:

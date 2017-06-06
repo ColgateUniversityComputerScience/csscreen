@@ -64,19 +64,18 @@ class ScreenTests(TestCase):
             self.assertQuerysetEqual(response.context['screens'],
                                      [repr(self.s)])
 
-
         def test_index2(self):
             xdict = \
-                {'type': 'ImageContent',
-                 'name': 'wales5',
-                 'duration': 10,
-                 'last_display': 'Wed May 24 10:40:15 2017',
-                 'installed': 'Wed May 24 10:40:15 2017',
-                 'hash': b'\x03\x1e\xdd}Ae',
-                 'expire': '',
-                 'display_count': 200,
-                 'display_restrictions': {},
-                 'file': '/home/pi/csscreen/screen_content_cache/cardiffrun.png'}
+             {'type': 'ImageContent',
+              'name': 'wales5',
+              'duration': 10,
+              'last_display': 'Wed May 24 10:40:15 2017',
+              'installed': 'Wed May 24 10:40:15 2017',
+              'hash': b'\x03\x1e\xdd}Ae',
+              'expire': '',
+              'display_count': 200,
+              'display_restrictions': {},
+              'file': '/home/pi/csscreen/screen_content_cache/cardiffrun.png'}
             # self.s._remote_call = Mock(return_value={
             #     'status': 'success',
             #     'content': [xdict]
@@ -118,7 +117,9 @@ class ScreenTests(TestCase):
                            'action': 'url'}
             response = c.post(reverse('screencontent-update'), postcontent)
             self.assertTemplateUsed("screens/screen_content_update.html")
-            self.assertContains(response, "constraint string X:0001-0002.  Should be in the format")
+            self.assertContains(
+                response,
+                "constraint string X:0001-0002.  Should be in the format")
 
             postcontent = {'content_name': 'test blah',
                            'duration': 10,
