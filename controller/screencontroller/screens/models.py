@@ -1,5 +1,8 @@
+import base64
+import json
 from django.db import models
 import django.utils.timezone as tz
+from django.core.exceptions import ValidationError
 import requests
 requests.packages.urllib3.disable_warnings()
 
@@ -33,18 +36,22 @@ class Screen(models.Model):
 
     def _remote_call(self, xtype, command):
         xpass = "?password={}".format(self.password)
+        starturl = f"https://{self.ipaddress}:{self.port}"
         if xtype == 'get':
             response = \
-                requests.get(
-                  f"https://{self.ipaddress}:{self.port}/{command}{xpass}",
-                  verify=False,
-                  timeout=1.0)
+                requests.get(f"{starturl}/{command}{xpass}",
+                             verify=False,
+                             timeout=1.0)
         elif xtype == 'delete':
-            response = \
-                requests.delete(
-                  f"https://{self.ipaddress}:{self.port}/{command}{xpass}",
-                  verify=False,
-                  timeout=1.0)
+            xurl = f"{starturl}/display/{command}{xpass}"
+            response = requests.delete(xurl, verify=False, timeout=1.0)
+        elif xtype == 'add':
+            xurl = f"{starturl}/display{xpass}"
+            xtype,formdata = command
+            print(f"Add: {xurl} {xtype}")
+            xdata = self._construct_add_object(xtype, formdata)
+            print(xdata)
+            response = requests.post(xurl, verify=False, data=xdata)
         if response.status_code != 200:
             raise \
               ScreenNotAccessible(
@@ -99,7 +106,9 @@ class Screen(models.Model):
         return getattr(self, "_last_ping", None)
 
     def add_content(self, xtype, formdata):
-        return True, "success"
+        response = self._remote_call('add', (xtype, formdata))
+        print(response)
+        return response['status'] == 'success', response['reason']
 
     def delete_content(self, xname):
         response = self._remote_call('delete', xname)
@@ -107,3 +116,66 @@ class Screen(models.Model):
 
     def __str__(self):
         return f"{self.name} @{self.ipaddress}"
+
+    @staticmethod
+    def _construct_add_object(xtype, formdata):
+        content = {}
+        if xtype not in ['url', 'image', 'html']:
+            raise ValidationError(_('Invalid content type'), code='invalid')
+
+        name = formdata.pop('content_name', None)
+        if name is None:
+            raise ValidationError(_('Missing content name'), code='invalid')
+
+#            {'content_name': 'test', 'duration': 10, 'xexcept': '', 'xonly': '', 'expire': None, 'url': 'http://cs.colgate.edu'}
+        content['name'] = name
+        content['type'] = xtype
+
+        if xtype == 'url':
+            urlc = formdata.pop('url', None)
+            if urlc is None:
+                raise ValidationError(_('Missing URL'), code='invalid')
+            content['content'] = base64.b64encode(urlc.encode('utf8')).decode('utf8')
+        elif xtype == 'image':
+            raise ValidationError(_('Image form handling not implemented yet'))
+            pass
+            # check_parm('content', params)
+            # content['content'] = encode_filedata(params['content']).decode('ascii')
+            # content['filename'] = os.path.basename(params['content'])
+            # content['caption'] = params.pop('caption', '')
+            # del params['content']
+        elif xtype == 'html':
+            raise ValidationError(_('HTML form handling not implemented yet'))
+            pass
+            # check_parm('content', params)
+            # content['content'] = encode_filedata(params['content']).decode('ascii')
+            # del params['content']
+            # for i, asset in enumerate(params.get('asset')):
+            #     content[f"assetname_{i}"] = asset
+            #     content[f"assetcontent_{i}"] = \
+            #        encode_filedata(asset).decode('ascii')
+
+            # params.pop('asset', None)
+
+        timespec = formdata.pop('expire', None)
+        if timespec is not None:
+            content['expiry'] = tz.datetime.strftime(timespec, '%Y%m%d%H%M%S')
+
+        duration = formdata.pop('duration', None)
+        if duration is not None:
+            content['duration'] = int(duration)
+
+        content['only'] = []
+        content['xexcept'] = []
+
+        onlystr = formdata.pop('xonly', None)
+        if onlystr is not None and onlystr:
+            olist = onlystr.split(',')
+            content['only'] = olist
+
+        exceptstr = formdata.pop('xexcept', None)
+        if exceptstr is not None and exceptstr:
+            elist = exceptstr.split(',')
+            content['xexcept'] = elist
+
+        return json.dumps(content)

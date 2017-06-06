@@ -86,17 +86,22 @@ class ScreenContentUpdate(View):
 
         form = formcls(request.POST, request.FILES)
         if form.is_valid():
-            mlist = []
+            faillist = []
+            successlist = []
             for sid in request.POST['screen']:
                 s = Screen.objects.get(pk=sid)
                 success, mesg = s.add_content(request.POST['action'],
                                               form.cleaned_data)
                 if success:
                     smsg = f"Screen {s.name} update successful: {mesg}"
+                    successlist.append(smsg)
                 else:
                     smsg = f"Screen {s.name} update failed: {mesg}"
-                mlist.append(smsg)
-            messages.info(request, ", ".join(mlist))
+                    faillist.append(smsg)
+            if faillist:
+                messages.warning(request, ", ".join(faillist))
+            if successlist:
+                messages.success(request, ", ".join(successlist))
             return HttpResponseRedirect(reverse('screen-detail', args=[s.id]))
         else:
             messages.warning(request, "Invalid form content.")
@@ -116,7 +121,7 @@ class ScreenDelete(DeleteView):
 class ScreenContentDelete(DetailView):
     model = Screen
 
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         pk = kwargs.get('pk', None)
         if pk is None:
             raise Http404("Screen does not exist")
@@ -126,7 +131,10 @@ class ScreenContentDelete(DetailView):
             raise Http404("Content name not found in request")
         try:
             response = obj.delete_content(name)
-            messages.success(request, f"no exception: {response}")
+            if response['status'] == 'success':
+                messages.success(request, f"response['reason']")
+            else:
+                messages.warning(request, f"response['reason']")
         except Exception as e:
             messages.warning(request, f"Content not deleted: {e}")
         return HttpResponseRedirect(reverse('screen-detail',

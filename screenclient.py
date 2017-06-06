@@ -57,8 +57,9 @@ def get_content(baseurl, password, name):
     print_response(response.json())
 
 def delete_content(baseurl, password, name):
-    response = requests.delete("{}/display/{}?password={}".format(
-        baseurl, name, password), verify=False)
+    xurl = "{}/display/{}?password={}".format(baseurl, name, password)
+    print(xurl)
+    response = requests.delete(xurl, verify=False)
     print_response(response.json())
 
 def check_parm(pname, params):
@@ -181,8 +182,10 @@ def add_content(baseurl, password, args):
 
     content = construct_add_object(params)
     xdata = json.dumps(content)
-    response = requests.post("{}/display?password={}".format(baseurl, password),
-        verify=False, data=xdata)
+    xurl = "{}/display?password={}".format(baseurl, password)
+    print(xurl, xdata)
+    response = requests.post(xurl, verify=False, data=xdata)
+    print(response.json())
     print_response(response.json())
 
 if __name__ == '__main__':

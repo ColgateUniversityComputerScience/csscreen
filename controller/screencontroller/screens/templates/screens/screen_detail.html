@@ -95,8 +95,12 @@ Screen detail
     </div>
     <div class="row">
         <div class="offset-sm-2 col-sm-2">
-            <a class="btn"
-                href="{% url 'screencontent-delete' screen.pk cdict.name %}">delete content</a>
+            <form method="post"
+                  action="{% url 'screencontent-delete' screen.pk cdict.name %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input class="btn btn-sm btn-outline-warning" type="submit" value="Delete content">
+            </form>
         </div>
     </div>
     <hr>
@@ -106,8 +110,9 @@ Screen detail
 </div>
 {% endfor %}
 </div>
+<a class="btn btn-sm btn-outline-primary"
+   href={% url 'screen-list' %}>Back to screen list</a>
 </div>
 <br>
-<a href={% url 'screen-list' %}>Back to screen list</a>
 </div>
 {% endblock %}
