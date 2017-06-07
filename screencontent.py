@@ -28,7 +28,7 @@ TimeConstraintSpec = namedtuple('TimeConstraintSpec', ['days','begin','end'])
 class TimeConstraint(metaclass=ABCMeta):
     _dowmap = {}
     _revdow = {}
-    for i,dayletter in enumerate('MTWRF'):
+    for i,dayletter in enumerate('MTWRFSU'):
         _dowmap[dayletter] = i
         _dowmap[dayletter.lower()] = i
         _revdow[i] = dayletter
@@ -47,13 +47,13 @@ class TimeConstraint(metaclass=ABCMeta):
 
     @staticmethod
     def parse_constraint(s):
-        days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
+        days = '([mM]?[tT]?[wW]?[rR]?[fF]?[Ss]?[Uu]?):?'
         mobj = re.match(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', s)
         if not mobj:
             mobj = re.match(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', s)
 
         if not mobj:
-            raise Exception("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(s))
+            raise Exception("Can't parse time constraint string {}.  Should be in the format [MTWRFSU:]HH:MM-HH:MM or [MTWRFSU:]HHMM-HHMM".format(s))
 
         days = tuple([ TimeConstraint._dowmap[letter] for letter in mobj.groups()[0] ])
         begin = int(mobj.groups()[1]) * 60 + int(mobj.groups()[2])

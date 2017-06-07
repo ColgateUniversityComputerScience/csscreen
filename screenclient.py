@@ -146,12 +146,12 @@ def construct_add_object(params):
     return content
 
 def verify_time_constraint(xstr):
-    days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
+    days = '([mM]?[tT]?[wW]?[rR]?[fF]?[Ss]?[Uu]?):?'
     mobj = re.match(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', xstr)
     if not mobj:
         mobj = re.match(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', xstr)
     if not mobj:
-        print ("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(xstr))
+        print ("Can't parse time constraint string {}.  Should be in the format [MTWRFSU:]HH:MM-HH:MM or [MTWRFSU:]HHMM-HHMM".format(xstr))
         sys.exit()
 
 def add_content(baseurl, password, args):
@@ -214,7 +214,7 @@ The following are the valid combinations of action and arguments:
         Once deleted, all resources (e.g., files, etc.) consumed by the
         content item are purged.
 
-    add name=<name> type=<image|html|url> content=<filename or url> duration=<seconds> expire=YYYYMMDD[HH[MM[SS]]] only=[MTWRF:]HH:MM-HH:MM except=[MTWRF:]HH:MM-HH:MM
+    add name=<name> type=<image|html|url> content=<filename or url> duration=<seconds> expire=YYYYMMDD[HH[MM[SS]]] only=[MTWRFSU:]HH:MM-HH:MM except=[MTWRFSU:]HH:MM-HH:MM
         The add action uploads and installs a new content item in the display
         app.  All arguments to the add command must be of the form "key=value",
         and there cannot be any spaces within the key or value (or the space

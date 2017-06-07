@@ -8,14 +8,15 @@ from .models import Screen
 def only_except_validator(val):
     for s in val.strip().split(','):
         s = s.strip()
-        days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
+        days = '([mM]?[tT]?[wW]?[rR]?[fF]?[Ss]?[Uu]?):?'
         mobj = re.match(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', s)
         if not mobj:
             mobj = re.match(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', s)
         if not mobj:
-            raise ValidationError("Can't parse time constraint string {}.  "
-                                  "Should be in the format [MTWRF:]HH:MM-HH:MM"
-                                  " or [MTWRF:]HHMM-HHMM".format(s))
+            raise ValidationError(
+                "Can't parse time constraint string {}.  "
+                "Should be in the format [MTWRFSU:]HH:MM-HH:MM"
+                " or [MTWRFSU:]HHMM-HHMM".format(s))
 
 
 class ContentBaseForm(forms.Form):
@@ -32,14 +33,14 @@ class ContentBaseForm(forms.Form):
                     label='Do not show on these days and times',
                     required=False,
                     validators=[only_except_validator],
-                    help_text='Format: MTWRF:HH:MM-HH:MM or '
-                              ' MTWRF:HHMM:HHMM.')
+                    help_text='Format: MTWRFSU:HH:MM-HH:MM or '
+                              ' MTWRFSU:HHMM:HHMM.')
     xonly = forms.CharField(
                     label='Show only on these days and times',
                     required=False,
                     validators=[only_except_validator],
-                    help_text='Format: MTWRF:HH:MM-HH:MM or '
-                              ' MTWRF:HHMM:HHMM.')
+                    help_text='Format: MTWRFSU:HH:MM-HH:MM or '
+                              ' MTWRFSU:HHMM:HHMM.')
     expire = forms.DateTimeField(required=False,
                                  label='Expiration date/time',
                                  help_text='Format: YYYY-MM-DD HH:MM:SS.  '
