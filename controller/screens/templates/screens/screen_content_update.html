@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}
+Screen content update...
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="lead mx-5 my-3">
+                Upload {{action}} content to {{screennames|join:', '}}
+        </div>
+    </div>
+
+<form action="{% url 'screencontent-update' %}"
+      enctype="multipart/form-data"
+      method="post">
+{% csrf_token %}
+
+{% for field in form %}
+<div class="form-group">
+    {% for error in field.errors %}
+        <p class="alert alert-warning">{{ error }}</p>
+    {% endfor %}
+    <label for="{{field.label_id_for_label}}">{{field.label}}: </label>
+    {{ field }}
+    {% if field.help_text %}
+    <p class="help form-text text-muted">{{ field.help_text|safe }}</p>
+    {% endif %}
+</div>
+{% endfor %}
+
+<input type="hidden" name="screen" value="{{screen}}">
+<input type="hidden" name="action" value="{{action}}">
+<input class="btn btn-outline-success" type="submit" value="Add content" />
+</form>
+<br>
+<a class="btn btn-sm btn-outline-primary" href="{% url 'screen-list'%}">Back to screen list</a>
+</div>
+{% endblock %}

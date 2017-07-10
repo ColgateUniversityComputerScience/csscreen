@@ -38,7 +38,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(output.encode('ascii'))
 
     def do_GET(self):
-        # valid GET requests: 
+        # valid GET requests:
         #    /display
         #    /display/{name}
         # print ("GET received: {}".format(self.path))
@@ -49,14 +49,19 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         parsed_path = urlparse(self.path)
         response_data = { 'status':'success' }
 
-        if parsed_path.path == '/display':
+        if parsed_path.path == '/ping':
+            response_data['content'] = {
+                'display_items': len(self.server.content_queue)
+            }
+        elif parsed_path.path == '/display':
             # list content
-            response_data['content'] = self.server.content_queue.list_content()
+            response_data['content'] = \
+                self.server.content_queue.list_content_as_dict()
         elif parsed_path.path.startswith('/display/'):
             xname = parsed_path.path[9:] # slice off '/display/'
             contentitem = self.server.content_queue.get_content(xname)
             if contentitem:
-                response_data['content'] = str(contentitem) # FIXME -- send back more detail?
+                response_data['content'] = json.dumps(contentitem.to_dict())
             else:
                 response_data['status'] = 'failure'
                 response_data['reason'] = "no content object named '{}'".format(xname)
@@ -130,11 +135,13 @@ class MyRequestHandler(BaseHTTPRequestHandler):
                     item = ImageContent(xfilename, name, content=content, **contentspec)
                 elif xtype == 'html':
                     item = HTMLContent(content.decode('ascii'), name, **contentspec)
-
             except Exception as e:
                 errorstr = str(e)
 
-            if errorstr or not (name and xtype and item):
+            if self.server.content_queue.get_content(name):
+                response_data['status'] = 'failure'
+                response_data['reason'] = "content already exists with that name"
+            elif errorstr or not (name and xtype and item):
                 response_data['status'] = 'failure'
                 response_data['reason'] = "failed to create content for specification {} {}".format(contentspec, errorstr)
             else:
@@ -150,7 +157,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 class ScreenRpcServer(QThread):
     def __init__(self, content_queue, password):
         QThread.__init__(self)
-        
+
         self.__content_queue = content_queue
         self.__httpd = HTTPServer(('0.0.0.0', 4443), MyRequestHandler)
         self.__httpd.socket = ssl.wrap_socket(self.__httpd.socket, certfile='server.pem', server_side=True)
@@ -175,4 +182,3 @@ def start_rpc_server(content_queue, rpc_password):
     rpcserver = ScreenRpcServer(content_queue, rpc_password)
     QTimer.singleShot(100, rpcserver.request_check)
     return rpcserver
-

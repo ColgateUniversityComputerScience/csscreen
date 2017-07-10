@@ -19,18 +19,19 @@ from PyQt4.QtWebKit import *
 running = True
 
 class Display(QWidget):
-    def __init__(self, content_queue, parent=None):
+    def __init__(self, content_queue, parent=None, timefontsize=20):
         super(Display, self).__init__(parent)
 
         self.__content_queue = content_queue
+        self.__timefontsize = timefontsize
 
         self.__nocontent = HTMLContent('''
         <!DOCTYPE html>
         <html lang="en">
         <head>
           <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
-            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
         </head>
         <body>
           <div class="jumbotron">
@@ -44,7 +45,7 @@ class Display(QWidget):
         self.time.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.time.setText('starting...')
         self.time.setAlignment(Qt.AlignLeft)
-        self.time.setFont(QFont("Helvetica", 20, QFont.Bold))
+        self.time.setFont(QFont("Helvetica", self.__timefontsize, QFont.Bold))
         p = QPalette()
         p.setBrush(QPalette.Text,QColor("darkRed"))
 
@@ -68,6 +69,7 @@ class Display(QWidget):
     def stop(self):
         self.clock.stop()
         self.close()
+        self.__nocontent.content_removed()
 
     def clock_update(self):
         global running
@@ -88,11 +90,14 @@ class Display(QWidget):
         except NoSuitableContentException:
             item = self.__nocontent
 
+        # qsize = self.webview.page().mainFrame().contentsSize()
+        qsize = self.webview.frameSize()
+
         # as content item to render itself to the display
-        item.render(self.webview)
+        item.render(self.webview, qsize.width(), qsize.height())
 
         # display_duration is in sec
-        QTimer.singleShot(item.display_duration*1000, self.content_update) 
+        QTimer.singleShot(item.display_duration*1000, self.content_update)
 
 def sigint(*args):
     global running
@@ -134,5 +139,6 @@ if __name__ == '__main__':
     write_pid()
     app.exec_() # block here until we die
     rpcserver.stop()
+    screen.stop()
     content_queue.shutdown()
     remove_pid()

@@ -1,33 +1,65 @@
 import sys
-import ssl
-import http.client
 import json
 import argparse
 import os
 import base64
 import re
 from datetime import datetime
+import textwrap
+import requests
+requests.packages.urllib3.disable_warnings()
 
-def get_connection(host='localhost', port=4443):
-    return http.client.HTTPSConnection(host, port, check_hostname=False)
 
-def print_response(conn):
-    response = conn.getresponse()
-    responsedata = response.read().decode('ascii')
-    conn.close()
-    print (responsedata)
+def make_base_url(host='localhost', port=4443):
+    return "https://{}:{}".format(host, port)
 
-def list_content(conn, password):
-    conn.request('GET', '/display?password={}'.format(password)) 
-    print_response(conn)
+def print_content_entry(entry, index = 1):
+    assert(isinstance(entry, dict))
+    name = entry.pop('name')
+    xtype = entry.pop('type')
+    print("Name: {} {}".format(name, xtype))
+    for k in sorted(entry.keys()):
+        value = entry[k]
+        if isinstance(value, str):
+            value = textwrap.shorten(value, 60)
+        print("    {}: {}".format(k, value))
 
-def get_content(conn, password, name):
-    conn.request('GET', '/display/{}?password={}'.format(name, password)) 
-    print_response(conn)
+def print_status(status, data):
+    if status == 'success':
+        print ("Operation succeeded")
+    else:
+        print ("Operation failed: {}".format(data['reason']))
 
-def delete_content(conn, password, name):
-    conn.request('DELETE', '/display/{}?password={}'.format(name, password)) 
-    print_response(conn)
+def print_response(responsedata):
+    print_status(responsedata['status'], responsedata)
+    rdata = responsedata.get('content', None)
+    if isinstance(rdata, str):
+        print_content_entry(rdata)
+    elif isinstance(rdata, list):
+        for i in range(len(rdata)):
+            print_content_entry(rdata[i], i+1)
+    else:
+        pass
+
+def ping_screen(baseurl, password):
+    response = requests.get('{}/ping?password={}'.format(baseurl, password),
+        verify=False)
+    print(response.json())
+
+def list_content(baseurl, password):
+    response = requests.get('{}/display?password={}'.format(baseurl, password),
+        verify=False)
+    print_response(response.json())
+
+def get_content(baseurl, password, name):
+    response = requests.get("{}/display/{}?password={}".format(baseurl,
+        name, password), verify=False)
+    print_response(response.json())
+
+def delete_content(baseurl, password, name):
+    xurl = "{}/display/{}?password={}".format(baseurl, name, password)
+    response = requests.delete(xurl, verify=False)
+    print_response(response.json())
 
 def check_parm(pname, params):
     if pname not in params:
@@ -38,7 +70,7 @@ def encode_filedata(filename):
     infile = open(filename, 'rb')
     data = infile.read()
     infile.close()
-    return base64.b64encode(data) 
+    return base64.b64encode(data)
 
 def construct_add_object(params):
     content = {}
@@ -47,25 +79,33 @@ def construct_add_object(params):
     del params['name']
     check_parm('type', params)
     content['type'] = params['type']
-    if params['type'] not in ['url','image','html']:
-        print ("Type parameter {} is not one of 'url','image', or 'file'".format(params['type']))
+    if params['type'] not in ['url', 'image', 'html']:
+        print(f"Type parameter {params['type']} is not one of "
+              "'url','image', or 'file'")
         sys.exit()
 
     if params['type'] == 'url':
         check_parm('content', params)
-        content['content'] = base64.b64encode(params['content'].encode('ascii')).decode('ascii')
+        content['content'] = \
+          base64.b64encode(params['content'].encode('ascii')).decode('ascii')
         del params['content']
     elif params['type'] == 'image':
         check_parm('content', params)
         content['content'] = encode_filedata(params['content']).decode('ascii')
         content['filename'] = os.path.basename(params['content'])
+        content['caption'] = params.pop('caption', '')
         del params['content']
     elif params['type'] == 'html':
         check_parm('content', params)
         content['content'] = encode_filedata(params['content']).decode('ascii')
         del params['content']
+        for i, asset in enumerate(params.get('asset')):
+            content[f"assetname_{i}"] = asset
+            content[f"assetcontent_{i}"] = \
+               encode_filedata(asset).decode('ascii')
 
     del params['type']
+    params.pop('asset', None)
 
     if 'expire' in params:
         estr = params['expire']
@@ -96,8 +136,8 @@ def construct_add_object(params):
     for exceptstr in params.get('except',[]):
         verify_time_constraint(exceptstr)
         content['xexcept'].append(exceptstr)
-    params.pop('only',None)
-    params.pop('except',None)
+    params.pop('only', None)
+    params.pop('except', None)
 
     if params:
         print ("Unrecognized parameters to 'add' command specified: {}".format(' '.join(params.keys())))
@@ -106,19 +146,19 @@ def construct_add_object(params):
     return content
 
 def verify_time_constraint(xstr):
-    days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
+    days = '([mM]?[tT]?[wW]?[rR]?[fF]?[Ss]?[Uu]?):?'
     mobj = re.match(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', xstr)
     if not mobj:
         mobj = re.match(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', xstr)
     if not mobj:
-        print ("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(xstr))
+        print ("Can't parse time constraint string {}.  Should be in the format [MTWRFSU:]HH:MM-HH:MM or [MTWRFSU:]HHMM-HHMM".format(xstr))
         sys.exit()
 
-def add_content(conn, password, args):
+def add_content(baseurl, password, args):
     # assume that args is a list of strings in the form:
     #   name=x type=url|image|html expire=YYYYMMDDHHMMSS begin=HHMM end=HHMM duration=int
     #   no spaces between argument key/value pairs
-    params = {'except':[], 'only':[]}
+    params = {'except': [], 'only': [], 'asset': []}
     for kvstr in args:
         try:
             args = kvstr.split('=')
@@ -134,50 +174,51 @@ def add_content(conn, password, args):
                                # the value may have an embedded = (e.g., for
                                # a URL with query string
 
-        if k == 'except' or k == 'only':
+        if k == 'except' or k == 'only' or k == 'asset':
             params[k].append(v)
         else:
             params[k] = v
 
     content = construct_add_object(params)
     xdata = json.dumps(content)
-    xdata = xdata.encode('ascii')
-    conn.request('POST', '/display?password={}'.format(password), body=xdata) 
-    print_response(conn)
+    xurl = "{}/display?password={}".format(baseurl, password)
+    response = requests.post(xurl, verify=False, data=xdata)
+    print_response(response.json())
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--password', '-p', default='password', help='Specify password used to authenticate requests for modifying and querying content on the display')
     parser.add_argument('--host', '-H', default='localhost', help='Specify hostname or IP address of display server')
     parser.add_argument('--port', '-P', default=4443, help='Specify port number of display server')
-    parser.add_argument('action', nargs=1, type=str, choices=['get','show','list','delete','add','help'], help="Query action.  Must be one of get, show, list, delete, add, or help.  The 'help' action gives detailed help on actions and arguments.")
+    parser.add_argument('action', nargs=1, type=str, choices=['ping','get','show','list','delete','add','help'], help="Query action.  Must be one of ping, get, show, list, delete, add, or help.  The 'help' action gives detailed help on actions and arguments.")
     parser.add_argument('action_args', nargs='*', help='''Any arguments to the specified action.  Use the option --actions to show detailed help for valid action/argument combinations.''')
     args = parser.parse_args()
 
-    conn = get_connection(args.host, args.port)
+    baseurl = make_base_url(args.host, args.port)
     action = args.action[0]
 
     if action == 'help':
         print ('''
 The following are the valid combinations of action and arguments:
+    ping
     get <name>
     show <name>
-        The get/show action requires the name of the content item for which 
+        The get/show action requires the name of the content item for which
         to display details.
 
     list
         The list action lists all content items installed in the display app.
 
     delete <name>
-        The delete action requires the name of the content item to delete.  
-        Once deleted, all resources (e.g., files, etc.) consumed by the 
+        The delete action requires the name of the content item to delete.
+        Once deleted, all resources (e.g., files, etc.) consumed by the
         content item are purged.
 
-    add name=<name> type=<image|html|url> content=<filename or url> duration=<seconds> expire=YYYYMMDD[HH[MM[SS]]] only=[MTWRF:]HH:MM-HH:MM except=[MTWRF:]HH:MM-HH:MM
-        The add action uploads and installs a new content item in the display 
+    add name=<name> type=<image|html|url> content=<filename or url> duration=<seconds> expire=YYYYMMDD[HH[MM[SS]]] only=[MTWRFSU:]HH:MM-HH:MM except=[MTWRFSU:]HH:MM-HH:MM
+        The add action uploads and installs a new content item in the display
         app.  All arguments to the add command must be of the form "key=value",
         and there cannot be any spaces within the key or value (or the space
-        must be escaped).  The only required arguments are name, type, and 
+        must be escaped).  The only required arguments are name, type, and
         content.  For image and html content types, the content argument must
         be a file containing either an image or html text, respectively.
         For the url content type, the content argument must be a valid URL.
@@ -191,7 +232,7 @@ The following are the valid combinations of action and arguments:
         (time 00:00) on that day.  The hour (HH), minute (MM) and second (SS)
         can also optionally be specified to give an expiration time on the
         given date.
-        
+
         The only and except arguments can be used to specify *time constraints*
         on displaying content.  The *only* argument can be used to specify that
         the content should *only* be displayed in a time range, and optionally
@@ -205,28 +246,35 @@ The following are the valid combinations of action and arguments:
         can be given to specify the time of day constraint.  The hour must
         be given in 24-hour format (i.e., 00-23).  Multiple except and/or
         only contraints can be given, but the app does *not* validate that
-        the contraints are reasonable.  
+        the contraints are reasonable.
         Examples:
-           only=MWF:08:20-9:10  --  Specifies that a content item should 
+           only=MWF:08:20-9:10  --  Specifies that a content item should
                                     only be displayed Monday, Wednesday,
                                     and Friday between 8:20am and 9:10am.
            except=14:45-16:45   --  Specifies that a content item should
                                     be displayed any time *except* during
                                     the time window of 2:45pm-4:45pm on
                                     any day of the week.
+
+        Content-specific options:
+            * For image content, one additional option is caption=<caption>.
+            * For html content, an addition option is asset=<filename>.  This
+              option can be specified more than once to include multiple
+              assets.
         ''')
+    elif action == 'ping':
+        ping_screen(baseurl, args.password)
     elif action == 'list':
-        list_content(conn, args.password)
+        list_content(baseurl, args.password)
     elif action == 'get' or action == 'show':
         if len(args.action_args) != 1:
             print ("For 'get' action, the name of the content item to get information about is required.")
             sys.exit()
-        get_content(conn, args.password, args.action_args[0])
+        get_content(baseurl, args.password, args.action_args[0])
     elif action == 'delete':
         if len(args.action_args) != 1:
             print ("For 'delete' action, the name of the content item to delete is required.")
             sys.exit()
-        delete_content(conn, args.password, args.action_args[0])
+        delete_content(baseurl, args.password, args.action_args[0])
     elif action == 'add':
-        add_content(conn, args.password, args.action_args)
-
+        add_content(baseurl, args.password, args.action_args)

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}
+Screen detail
+{% endblock %}
+
+{% block content %}
+<div class="lead mx-5 my-2">
+        Content on {{screen.name}}
+        <span class="text-muted">(IP address {{screen.ipaddress}})</span>:
+</div>
+<div class="container">
+<div class="content-group">
+{% for cdict in screen.content_cache|dictsort:"name" %}
+    <div class="row">
+        <div class="col-sm-2">{{forloop.counter}}</div>
+        <div class="col-sm-10">
+                <strong>{{cdict.name}}</strong> of type {{cdict.type|lower}},
+            on screen for {{cdict.duration}} seconds.
+        </div>
+    </div>
+    <div class="row">
+        <div class="offset-sm-2 col-sm-10">
+            {% if cdict.type == 'ImageContent' %}
+                <div class="row">
+                    <div class="col-sm-8">
+                        Image file: <code>{{cdict.content}}</code>
+                    </div>
+                </div>
+                {% if cdict.caption %}
+                <div class="row">
+                    <div class="col-sm-8">
+                        Caption: {{cdict.caption}}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="row">
+                    <div class="col-sm-8">
+                        Image dimension: {{cdict.dimensions}}
+                    </div>
+                </div>
+            {% elif cdict.type == 'URLContent' %}
+                <div class="row">
+                    <div class="col-sm-8">
+                        URL: <code>{{cdict.content}}</code>
+                    </div>
+                </div>
+            {% else %}
+                <div class="row">
+                    <div class="col-sm-8">
+                        HTML content: <code>{{cdict.content|truncatechars:80|escape}}</code>
+                    </div>
+                </div>
+                {% if cdict.htmlassets %}
+                <div class="row">
+                    <div class="col-sm-8">
+                        HTML assets: {{cdict.htmlassets}}
+                    </div>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="offset-sm-2 col-sm-10">
+            {% if cdict.expire %}
+            Expires at {{cdict.expire}}.
+            {% else %}
+            No expiration time.
+            {% endif %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="offset-sm-2 col-sm-10">
+            {% if cdict.display_restrictions.only %}
+            Only show at
+            {{cdict.display_restrictions.only}}
+            {% elif cdict.display_restrictions.except %}
+            Show except for
+            {{cdict.display_restrictions.except}}
+            {% else %}
+            No display restrictions.
+            {% endif %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="offset-sm-2 col-sm-5">
+            Last display: {{cdict.last_display}}.
+        </div>
+    </div>
+    <div class="row">
+        <div class="offset-sm-2 col-sm-5">
+            Display count: {{cdict.display_count}}.
+        </div>
+    </div>
+    <div class="row">
+        <div class="offset-sm-2 col-sm-2">
+            <form method="post"
+                  action="{% url 'screencontent-delete' screen.pk cdict.name %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input class="btn btn-sm btn-outline-warning" type="submit" value="Delete content">
+            </form>
+        </div>
+    </div>
+    <hr>
+{% empty %}
+<div class="row">
+    <div class="offset-sm-2 col-sm-6"><strong>No content on screen.</strong></div>
+</div>
+{% endfor %}
+</div>
+
+<div class="form-group">
+    <a href="{% url 'screencontent-update' %}?screen={{screen.id}}&action=html"
+       class="btn btn-outline-primary">Add HTML content</a>
+    <a href="{% url 'screencontent-update' %}?screen={{screen.id}}&action=image"
+       class="btn btn-outline-primary">Add Image content</a>
+    <a href="{% url 'screencontent-update' %}?screen={{screen.id}}&action=url"
+       class="btn btn-outline-primary">Add URL content</a>
+</div>
+
+<a class="btn btn-sm btn-outline-primary"
+   href={% url 'screen-list' %}>Back to screen list</a>
+</div>
+<br>
+</div>
+{% endblock %}

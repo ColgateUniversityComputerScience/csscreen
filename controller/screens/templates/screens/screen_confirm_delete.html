@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}
+Screen delete confirmation
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="lead mx-5 my-2">
+            Really delete {{screen.name}}?
+    </div>
+<form action="" method="post">{% csrf_token %}
+<p class="alert alert-warning">Are you sure you want to delete the screen "{{ object }}"?</p>
+<input class="btn btn-outline-primary" type="submit" value="Confirm" />
+<a class="btn btn-outline-primary" href="{% url 'screen-list' %}">Cancel</a>
+</form>
+</div>
+{% endblock %}

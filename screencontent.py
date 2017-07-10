@@ -3,6 +3,8 @@
 import sys
 import os
 import os.path
+import shutil
+import tempfile
 from abc import ABCMeta,abstractmethod
 from datetime import datetime
 from time import mktime, time, asctime
@@ -11,6 +13,10 @@ import pickle
 from collections import namedtuple
 import re
 import textwrap
+import hashlib
+import base64
+from subprocess import getstatusoutput
+
 from PyQt4.QtCore import QUrl
 
 assert(sys.version_info.major == 3)
@@ -22,7 +28,7 @@ TimeConstraintSpec = namedtuple('TimeConstraintSpec', ['days','begin','end'])
 class TimeConstraint(metaclass=ABCMeta):
     _dowmap = {}
     _revdow = {}
-    for i,dayletter in enumerate('MTWRF'):
+    for i,dayletter in enumerate('MTWRFSU'):
         _dowmap[dayletter] = i
         _dowmap[dayletter.lower()] = i
         _revdow[i] = dayletter
@@ -41,13 +47,13 @@ class TimeConstraint(metaclass=ABCMeta):
 
     @staticmethod
     def parse_constraint(s):
-        days = '([mM]?[tT]?[wW]?[rR]?[fF]?):?'
+        days = '([mM]?[tT]?[wW]?[rR]?[fF]?[Ss]?[Uu]?):?'
         mobj = re.match(days + '(\d{2}):(\d{2})-(\d{2}):(\d{2})', s)
         if not mobj:
             mobj = re.match(days + '(\d{2})(\d{2})-(\d{2})(\d{2})', s)
 
         if not mobj:
-            raise Exception("Can't parse time constraint string {}.  Should be in the format [MTWRF:]HH:MM-HH:MM or [MTWRF:]HHMM-HHMM".format(s))
+            raise Exception("Can't parse time constraint string {}.  Should be in the format [MTWRFSU:]HH:MM-HH:MM or [MTWRFSU:]HHMM-HHMM".format(s))
 
         days = tuple([ TimeConstraint._dowmap[letter] for letter in mobj.groups()[0] ])
         begin = int(mobj.groups()[1]) * 60 + int(mobj.groups()[2])
@@ -63,7 +69,7 @@ class TimeConstraint(metaclass=ABCMeta):
         dow = ''.join([ TimeConstraint._revdow[dow] for dow in self.__constraint.days ])
         begin = '{:02d}:{:02d}'.format(self.__constraint.begin // 60, self.__constraint.begin % 60)
         end = '{:02d}:{:02d}'.format(self.__constraint.end // 60, self.__constraint.end % 60)
-        return "{}: {}:{}-{}".format(self.__class__.__name__, dow, begin, end)
+        return "{}:{}-{}".format(dow, begin, end)
 
 class Only(TimeConstraint):
     def __init__(self, s):
@@ -75,14 +81,25 @@ class Only(TimeConstraint):
 class Except(TimeConstraint):
     def __init__(self, s):
         TimeConstraint.__init__(self, s)
-        
+
     def should_display(self, now):
         return not self.now_matches_constraint(now)
+
+
+def _make_hash(data):
+    m = hashlib.sha256()
+    if isinstance(data, str):
+        data = data.encode('utf8')
+    m.update(data)
+    h = m.digest()
+    return base64.b64encode(h).decode('utf8')
+
 
 class ContentItem(metaclass=ABCMeta):
     def __init__(self, name, **kwargs):
         self.__display_duration = int(kwargs.get('duration', 10))
         self.__last_display = '(none)'
+        self.__installed = asctime()
 
         # datetime object
         estr = kwargs.get('expiry', None)
@@ -120,10 +137,10 @@ class ContentItem(metaclass=ABCMeta):
         self.__name = name
 
     @abstractmethod
-    def render(self, webview):
+    def render(self, webview, width, height):
         '''
         Method which is invoked when the content item should display itself.
-        webview is a QWebView object 
+        webview is a QWebView object
         (see http://qt-project.org/doc/qt-4.8/qwebview.html).
         '''
         pass
@@ -169,6 +186,23 @@ class ContentItem(metaclass=ABCMeta):
     def __str__(self):
         return "{} ({}) duration:{} last_display:{} display_count:{} expire:{} {} {}".format(self.__class__.__name__, self.name, self.display_duration, self.last_display, self.display_count, self.expiry, ','.join([str (e) for e in self.__only]), ','.join([str(e) for e in self.__except]))
 
+    def to_dict(self):
+        expire = ''
+        if self.__expire_datetime is not None:
+            expire = str(self.__expire_datetime)
+        restrictions = {'only': ','.join([str(e) for e in self.__only]),
+                        'except': ','.join([str(e) for e in self.__except])}
+        return {
+            'type': self.__class__.__name__,
+            'name': self.name,
+            'duration': self.display_duration,
+            'last_display': self.last_display,
+            'installed': self.__installed,
+            'expire': expire,
+            'display_count': self.display_count,
+            'display_restrictions': restrictions,
+        }
+
     @abstractmethod
     def content_removed(self):
         '''
@@ -210,9 +244,10 @@ class ContentItem(metaclass=ABCMeta):
 class URLContent(ContentItem):
     def __init__(self, url, name, **kwargs):
         super(URLContent, self).__init__(name, **kwargs)
+        self.__hash = _make_hash(url)
         self.__url = url
 
-    def render(self, webview):
+    def render(self, webview, width, height):
         self.displayed()
         webview.load(QUrl(self.__url))
 
@@ -222,22 +257,71 @@ class URLContent(ContentItem):
     def __str__(self):
         return '{} {}'.format(ContentItem.__str__(self), str(self.__url))
 
+    def to_dict(self):
+        xdict = ContentItem.to_dict(self)
+        xdict['hash'] = self.__hash
+        xdict['content'] = str(self.__url)
+        return xdict
+
+
 class ImageContent(ContentItem):
     def __init__(self, filename, name, content, **kwargs):
         super(ImageContent, self).__init__(name, **kwargs)
         # NB: filename should be an absolute path
         absfile = self.__write_data(filename, content)
         self.__filename = absfile
+        self.__hash = _make_hash(content)
+        self.__imgdim = self.__get_img_dimensions()
+        self.__caption = kwargs.pop('caption', '')
+        self.__frame = '''
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet"
+  href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  </head>
+  <body>
+    <br>
+    <img src="file:///{}" {} class="center-block">
+    <center>
+    <h4>{}</h4>
+    </center>
+  </body>
+</html>'''
 
     def __write_data(self, filename, content):
-        outpath = os.path.join(os.getcwd(), CACHE_DIR, filename)
+        base, ext = os.path.splitext(filename)
+        outdir = os.path.join(os.getcwd(), CACHE_DIR)
+        fd, outpath = tempfile.mkstemp(suffix=ext, dir=outdir, text=False)
+        os.close(fd)
         with open(outpath, 'wb') as outfile:
             outfile.write(content)
         return outpath
-        
-    def render(self, webview):
+
+    def __get_img_dimensions(self):
+        status, output = getstatusoutput("file {}".format(self.__filename))
+        mobj = re.search(r"(?P<w>\d+)\s*x\s*(?P<h>\d+)", output)
+        if not mobj:
+            return (480, 640)  # default dimensions :-(
+        w = int(mobj.group('w'))
+        h = int(mobj.group('h'))
+        return (w, h)
+
+    def render(self, webview, width, height):
         self.displayed()
-        webview.load(QUrl.fromLocalFile(self.__filename))
+        imgw, imgh = self.__imgdim
+        showwidth = int(min(width, imgw) * 0.9)
+        showheight = int(min(height, imgh) * 0.9)
+        if imgw < imgh:
+            wh = 'height'
+            dim = showheight
+        else:
+            wh = 'width'
+            dim = showwidth
+        wh = '{}="{}"'.format(wh, dim)
+        content = self.__frame.format(self.__filename, wh,
+                                      self.__caption)
+        webview.setHtml(content)
 
     def content_removed(self):
         os.unlink(self.__filename)
@@ -245,20 +329,65 @@ class ImageContent(ContentItem):
     def __str__(self):
         return '{} {}'.format(ContentItem.__str__(self), self.__filename)
 
+    def to_dict(self):
+        xdict = ContentItem.to_dict(self)
+        xdict['hash'] = self.__hash
+        xdict['content'] = str(self.__filename)
+        xdict['caption'] = self.__caption
+        xdict['dimensions'] = 'x'.join(map(str, self.__imgdim))
+        return xdict
+
+
 class HTMLContent(ContentItem):
     def __init__(self, htmltext, name, **kwargs):
         super(HTMLContent, self).__init__(name, **kwargs)
-        self.__text = htmltext
+        self.__dir, index = self._store_assets(htmltext, **kwargs)
+        self.__hash = _make_hash(htmltext)
+        self.__page = htmltext
+        self.__url = "file://{}".format(index)
 
-    def render(self, webview):
+    def _store_assets(self, htmltext, **kwargs):
+        assets = {}
+        for k, v in kwargs.items():
+            if k.startswith('assetname'):
+                name = v
+                base, num = k.split('_')
+                content = kwargs.get("assetcontent_{}".format(num), None)
+                if content is None:
+                    continue
+                assets[name] = base64.b64decode(content)
+
+        self.__assetnames = list(assets.keys())
+
+        xdir = tempfile.mkdtemp(dir=os.path.join(os.getcwd(), CACHE_DIR))
+        fd, indexpath = tempfile.mkstemp(suffix='.html', dir=xdir)
+        os.close(fd)
+        with open(indexpath, 'w') as outfile:
+            outfile.write(htmltext)
+
+        for name, content in assets.items():
+            outname = os.path.join(xdir, name)
+            with open(outname, 'wb') as outfile:
+                outfile.write(content)
+        return xdir, indexpath
+
+    def render(self, webview, width, height):
         self.displayed()
-        webview.setHtml(self.__text)
+        webview.load(QUrl(self.__url))
 
     def content_removed(self):
-        pass
+        shutil.rmtree(self.__dir, ignore_errors=True)
 
     def __str__(self):
-        return "{} '{}...'".format(ContentItem.__str__(self), self.__text[:20])
+        return "{} '{}...'".format(ContentItem.__str__(self), self.__page[:20])
+
+    def to_dict(self):
+        xdict = ContentItem.to_dict(self)
+        xdict['hash'] = self.__hash
+        xdict['content'] = str(self.__page)
+        xdict['assets'] = ','.join(self.__assetnames)
+        return xdict
+
 
 class NoSuitableContentException(Exception):
     '''
@@ -267,6 +396,7 @@ class NoSuitableContentException(Exception):
     constraints.
     '''
     pass
+
 
 class ContentQueue(object):
     SAVE_FILE = 'content_queue.bin'
@@ -277,6 +407,9 @@ class ContentQueue(object):
         self.__create_cache_dir()
         self.__restore_content()
         self.__save_content()
+
+    def __len__(self):
+        return len(self.__queue)
 
     def add_content(self, content):
         with self.__qlock:
@@ -304,7 +437,7 @@ class ContentQueue(object):
         except:
             self.__queue = []
             return
-            
+
         with pfile:
             self.__queue = pickle.load(pfile)
 
@@ -330,7 +463,7 @@ class ContentQueue(object):
                 del self.__queue[i]
             if killlist:
                 self.__save_content()
-        
+
     def next_content(self):
         self.__expire_content()
 
@@ -345,8 +478,8 @@ class ContentQueue(object):
             while True:
                 xnext = self.__queue.pop(0)
                 self.__queue.append(xnext)
-                i += 1 
-                
+                i += 1
+
                 if xnext.should_display(now):
                     return xnext
 
@@ -369,6 +502,10 @@ class ContentQueue(object):
     def list_content(self):
         with self.__qlock:
             return [ str(c) for c in self.__queue ]
+
+    def list_content_as_dict(self):
+        with self.__qlock:
+            return [ c.to_dict() for c in self.__queue ]
 
 
 if __name__ == '__main__':

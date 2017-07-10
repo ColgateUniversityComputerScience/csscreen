@@ -15,7 +15,7 @@ For installing onto Ubuntu or Raspbian, you can do the following:
 
  1. Install the necessary PyQt support libraries and some X11 tools for enabling and disabling screen sleep:
 
-        $ sudo apt-get install x11-xserver-utils python3-pyqt4
+        $ sudo apt-get install x11-xserver-utils python3-pyqt4 python3-requests
 
  2. Clone this repo, cd into it, and type ``./run.sh``.  That should get things running, but you will probably want to create and install crontab entries to start and stop the display server at different times of day, and to disable/enable HDMI energy saver and screen-sleep capabilities.  
 
